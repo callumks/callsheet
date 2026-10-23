@@ -32,10 +32,12 @@ export default async function UpcomingPage() {
         </div>
       ) : null}
 
-      <section className="mt-8">
-        <h2 className="text-xs uppercase tracking-wide text-ink-3">Next 14 days</h2>
-        <JobList jobs={list.map((r) => r.job)} empty={next ? "Nothing else in the next two weeks." : undefined} />
-      </section>
+      {(next || list.length > 0) && (
+        <section className="mt-8">
+          <h2 className="text-xs uppercase tracking-wide text-ink-3">Next 14 days</h2>
+          <JobList jobs={list.map((r) => r.job)} empty="Nothing else in the next two weeks." />
+        </section>
+      )}
 
       {later.length > 0 && (
         <section className="mt-8">

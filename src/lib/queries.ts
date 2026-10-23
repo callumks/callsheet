@@ -45,6 +45,7 @@ export async function upcoming(day = today()) {
 }
 
 export async function jobDetail(id: string) {
+  if (!/^[0-9a-f-]{36}$/i.test(id)) return null;
   const [job] = await db.select().from(jobs).where(eq(jobs.id, id)).limit(1);
   if (!job) return null;
   const [trips, [invoice], rems, source] = await Promise.all([
@@ -87,9 +88,10 @@ function monthKey(d: string) {
   return d.slice(0, 7);
 }
 
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
 function monthLabel(key: string) {
-  const [y, m] = key.split("-").map(Number);
-  return new Date(Date.UTC(y, m - 1, 1)).toLocaleString("en-GB", { month: "short", timeZone: "UTC" });
+  return MONTHS[Number(key.slice(5, 7)) - 1];
 }
 
 export async function earnings(day = today(), now = new Date()): Promise<EarningsView> {

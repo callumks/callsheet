@@ -38,7 +38,11 @@ export default async function EarningsPage() {
 
       <div className="mt-8">
         <h2 className="mb-3 text-xs uppercase tracking-wide text-ink-3">Six months</h2>
-        <EarningsBars bars={e.bars} currency={e.currency} />
+        {e.bars.some((b) => b.total > 0) ? (
+          <EarningsBars bars={e.bars} currency={e.currency} />
+        ) : (
+          <p className="text-sm text-ink-3">Nothing invoiced in the last six months. Confirmed jobs show up here.</p>
+        )}
       </div>
 
       {e.otherCurrencies.length > 0 && (

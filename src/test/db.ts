@@ -3,6 +3,9 @@ import { db } from "@/db";
 
 /** Wipe every table between DB-backed tests. */
 export async function resetDb() {
+  if (!/test/.test(process.env.DATABASE_URL ?? "")) {
+    throw new Error("Refusing to truncate: DATABASE_URL does not look like a test database. Create .env.test.");
+  }
   await db.execute(
     sql`TRUNCATE reminders, invoices, travel, jobs, emails, push_subscriptions, google_accounts RESTART IDENTITY CASCADE`,
   );

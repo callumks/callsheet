@@ -19,7 +19,8 @@
     "eval:offline": "tsx scripts/eval.ts --skip-llm",
     "seed:demo": "tsx scripts/seed-demo.ts",
     "screenshots": "tsx scripts/screenshots.ts",
-    "vapid": "tsx scripts/vapid.ts"
+    "vapid": "tsx scripts/vapid.ts",
+    "db:test:setup": "createdb callsheet_test 2>/dev/null; DATABASE_URL=${TEST_DATABASE_URL:-postgres://localhost:5432/callsheet_test} drizzle-kit migrate"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.1.0",
