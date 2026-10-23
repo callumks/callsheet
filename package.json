@@ -16,7 +16,10 @@
     "test:watch": "vitest",
     "keygen": "tsx scripts/keygen.ts",
     "eval": "tsx scripts/eval.ts",
-    "eval:offline": "tsx scripts/eval.ts --skip-llm"
+    "eval:offline": "tsx scripts/eval.ts --skip-llm",
+    "seed:demo": "tsx scripts/seed-demo.ts",
+    "screenshots": "tsx scripts/screenshots.ts",
+    "vapid": "tsx scripts/vapid.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.1.0",
@@ -41,6 +44,7 @@
     "drizzle-kit": "^0.31.11",
     "eslint": "^9",
     "eslint-config-next": "16.4.2",
+    "puppeteer-core": "^25.16.0",
     "sharp": "^0.35.5",
     "tailwindcss": "^4",
     "tsx": "^4.23.15",

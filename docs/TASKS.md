@@ -25,7 +25,7 @@ One commit per task. Ticked when it lands on `main`.
 
 ## Milestone 3 — Reminders
 
-- [ ] 16 Web push: service worker, subscribe flow, VAPID send, /api/cron/reminders
+- [x] 16 Web push: service worker, subscribe flow, VAPID send, /api/cron/reminders
 - [ ] 17 Invoice nudges: invoice_due the day after wrap, overdue at due + 1 day then weekly
 
 ## Milestone 4 — Polish and ship

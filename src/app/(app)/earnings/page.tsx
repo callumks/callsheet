@@ -4,6 +4,7 @@ import { StatusDot } from "@/components/status-dot";
 import { formatMoney, formatRange, jobName } from "@/lib/format";
 import { earnings, syncState } from "@/lib/queries";
 import { MarkPaid } from "./mark-paid";
+import { PushToggle } from "@/components/push-toggle";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Earnings" };
@@ -74,7 +75,11 @@ export default async function EarningsPage() {
         )}
       </div>
 
-      <footer className="mt-12 flex items-center justify-between text-xs text-ink-3">
+      <div className="mt-12">
+        <PushToggle />
+      </div>
+
+      <footer className="mt-6 flex items-center justify-between text-xs text-ink-3">
         <span>{sync?.email ?? ""}</span>
         <form action="/api/auth/signout" method="post">
           <button type="submit">Sign out</button>
