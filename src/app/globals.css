@@ -1,26 +1,69 @@
 @import "tailwindcss";
 
+/* One ground, one ink, one accent. Everything else is ink at an opacity. */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --ground: #ffffff;
+  --ink: #141414;
+  --accent: #f04e23;
+  --ink-2: color-mix(in oklab, var(--ink) 62%, var(--ground));
+  --ink-3: color-mix(in oklab, var(--ink) 38%, var(--ground));
+  --ink-4: color-mix(in oklab, var(--ink) 10%, var(--ground));
+  --ink-5: color-mix(in oklab, var(--ink) 5%, var(--ground));
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --ground: #0d0d0d;
+    --ink: #f2f2f2;
+    --accent: #ff6a3d;
   }
 }
 
+@theme inline {
+  --color-ground: var(--ground);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-ink-4: var(--ink-4);
+  --color-ink-5: var(--ink-5);
+  --color-accent: var(--accent);
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+}
+
+html {
+  color-scheme: light dark;
+}
+
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: contain;
+}
+
+/* Times and money only. */
+.num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Status dot: solid confirmed, outline 1st option, dashed 2nd option. */
+.dot {
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 9999px;
+  flex: none;
+}
+.dot-confirmed { background: var(--ink); }
+.dot-option_1 { border: 1.5px solid var(--ink); }
+.dot-option_2 { border: 1.5px dashed var(--ink-2); }
+.dot-wrapped { background: var(--ink-3); }
+.dot-cancelled { background: transparent; border: 1.5px solid var(--ink-4); }
+.dot-accent { background: var(--accent); }
+
+@media (display-mode: standalone) {
+  body { padding-top: env(safe-area-inset-top); }
 }
