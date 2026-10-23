@@ -6,7 +6,7 @@ One commit per task. Ticked when it lands on `main`.
 
 - [x] 01 Foundation: theme tokens, fonts, dark mode, PWA manifest, app shell with floating nav, this list
 - [x] 02 Database: google_accounts + push_subscriptions tables, migrations, local dev DB
-- [ ] 03 Crypto: AES-256-GCM encrypt/decrypt for the Gmail refresh token, tested
+- [x] 03 Crypto: AES-256-GCM encrypt/decrypt for the Gmail refresh token, tested
 - [ ] 04 Auth: Google sign-in with gmail.readonly, allow-list of one, signed session cookie, route guard
 - [ ] 05 Gmail client: history fetch, message headers, body on demand, token refresh
 - [ ] 06 Filter: agency domain allow-list + booking-word subject match, tested

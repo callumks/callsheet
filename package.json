@@ -13,7 +13,8 @@
     "typecheck": "tsc --noEmit",
     "db:migrate": "drizzle-kit migrate",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "keygen": "tsx scripts/keygen.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.1.0",
