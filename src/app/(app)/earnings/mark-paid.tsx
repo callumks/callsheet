@@ -10,9 +10,9 @@ export function MarkPaid({ jobId }: { jobId: string }) {
       type="button"
       disabled={pending}
       onClick={() => start(() => setInvoiceStatus(jobId, "paid"))}
-      className="shrink-0 rounded-full bg-ink-5 px-3 py-1.5 text-xs font-medium disabled:opacity-50"
+      className="press h-8 shrink-0 rounded-full bg-ground px-3 text-xs font-medium disabled:opacity-50"
     >
-      {pending ? "…" : "Paid"}
+      {pending ? "Saving" : "Paid"}
     </button>
   );
 }

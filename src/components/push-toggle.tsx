@@ -69,10 +69,10 @@ export function PushToggle() {
   };
 
   return (
-    <div className="flex items-center justify-between gap-4 py-3">
+    <div className="flex items-center justify-between gap-4 px-4 py-3.5">
       <div>
         <div>Notifications</div>
-        <div className="text-sm text-ink-3">{text[state] || "Night before, 2h before call, invoice nudges."}</div>
+        <div className="mt-0.5 text-sm text-ink-3">{text[state] || "Night before, 2h before call, invoice nudges."}</div>
       </div>
       {(state === "off" || state === "on" || state === "busy") && (
         <button
@@ -81,9 +81,9 @@ export function PushToggle() {
           aria-checked={state === "on"}
           disabled={state === "busy"}
           onClick={() => void (state === "on" ? disable() : enable())}
-          className={`relative h-7 w-12 shrink-0 rounded-full transition-colors disabled:opacity-50 ${state === "on" ? "bg-ink" : "bg-ink-4"}`}
+          className={`relative h-7 w-12 shrink-0 rounded-full transition-colors disabled:opacity-50 ${state === "on" ? "bg-accent" : "bg-ink-4"}`}
         >
-          <span className={`absolute top-1 h-5 w-5 rounded-full bg-ground transition-all ${state === "on" ? "left-6" : "left-1"}`} />
+          <span className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-all ${state === "on" ? "left-6" : "left-1"}`} />
           <span className="sr-only">Notifications</span>
         </button>
       )}
