@@ -5,7 +5,11 @@ import * as schema from "./schema";
 const url = process.env.DATABASE_URL;
 if (!url) throw new Error("DATABASE_URL is not set");
 
-const client = postgres(url, { prepare: false });
+// One client per process. Next.js dev reloads modules; keep it on globalThis.
+const g = globalThis as unknown as { __pg?: ReturnType<typeof postgres> };
+const client = g.__pg ?? postgres(url, { prepare: false, max: 5 });
+if (process.env.NODE_ENV !== "production") g.__pg = client;
 
 export const db = drizzle(client, { schema });
 export type Db = typeof db;
+export { schema };
