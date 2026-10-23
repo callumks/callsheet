@@ -32,7 +32,7 @@ One commit per task. Ticked when it lands on `main`.
 
 - [x] 18 Empty, loading and error states; dark mode pass
 - [x] 19 Demo seed: `pnpm seed:demo` fills the DB with fake jobs for screenshots
-- [ ] 20 README: architecture, setup, screenshots, status
+- [x] 20 README: architecture, setup, screenshots, status
 
 ## Phase 2 (not in v1)
 
