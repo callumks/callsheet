@@ -10,7 +10,7 @@ One commit per task. Ticked when it lands on `main`.
 - [x] 04 Auth: Google sign-in with gmail.readonly, allow-list of one, signed session cookie, route guard
 - [x] 05 Gmail client: history fetch, message headers, body on demand, token refresh
 - [x] 06 Filter: agency domain allow-list + booking-word subject match, tested
-- [ ] 07 Classify: one cheap LLM call → new_booking / update / travel / payment / irrelevant
+- [x] 07 Classify: one cheap LLM call → new_booking / update / travel / payment / irrelevant
 - [ ] 08 Extract: strict JSON schema via structured outputs, Zod-validated, nulls over guesses
 - [ ] 09 Upsert: thread-id then agency + client + date-overlap matching, writes jobs / travel / invoices, tested against the DB
 - [ ] 10 Reminder scheduling: night-before, 2h-before, invoice-due, overdue, in the job's time zone, tested
