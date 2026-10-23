@@ -14,7 +14,9 @@
     "db:migrate": "drizzle-kit migrate",
     "test": "vitest run",
     "test:watch": "vitest",
-    "keygen": "tsx scripts/keygen.ts"
+    "keygen": "tsx scripts/keygen.ts",
+    "eval": "tsx scripts/eval.ts",
+    "eval:offline": "tsx scripts/eval.ts --skip-llm"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.1.0",

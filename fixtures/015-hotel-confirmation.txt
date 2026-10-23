@@ -1,0 +1,21 @@
+From: reservations@mercerlane.example
+Subject: Your reservation is confirmed – Mercer Lane Hotel, New York – HTL-88213
+Date: 2026-10-29T11:02:00Z
+Thread: t-015
+
+Dear Callum Stoddart,
+
+Thank you for choosing Mercer Lane Hotel. Your reservation is confirmed.
+
+Confirmation number: HTL-88213
+Guest: Callum Stoddart
+Room: Queen, 1 guest
+Check-in: Monday, November 2, 2026 from 3:00 PM
+Check-out: Thursday, November 5, 2026 by 11:00 AM
+Address: 140 Mercer Lane, New York, NY 10012
+Rate: prepaid by Select East – no payment due at the property except incidentals
+
+Cancellation: free until 48 hours before arrival.
+
+We look forward to welcoming you.
+Mercer Lane Hotel

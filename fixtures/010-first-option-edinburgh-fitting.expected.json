@@ -1,0 +1,27 @@
+{
+  "label": "new_booking",
+  "extraction": {
+    "job": {
+      "client": "Tweedside",
+      "agency": "North Agency",
+      "booker": "Priya Shah",
+      "job_type": "fitting + shoot",
+      "status": "option_1",
+      "start_date": "2026-11-24",
+      "end_date": "2026-11-25",
+      "call_time": "14:00",
+      "wrap_time": null,
+      "location": "Tweedside atelier, 8 Thistle Lane, Edinburgh EH2",
+      "timezone": "Europe/London",
+      "day_rate": 700,
+      "currency": "GBP",
+      "usage": "in-store + web, 12 months UK",
+      "notes": "Day 1 fitting call 14:00; day 2 shoot call 07:00. Travel up Monday evening by train, agency to book."
+    },
+    "travel": [],
+    "payment": null,
+    "changes": [],
+    "confidence": 0.85,
+    "uncertain_fields": []
+  }
+}

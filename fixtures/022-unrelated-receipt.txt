@@ -1,0 +1,18 @@
+From: Pennywell Print <orders@pennywellprint.example>
+Subject: Your order #PW-20931 has shipped
+Date: 2026-10-30T15:45:00Z
+Thread: t-022
+
+Hi Callum,
+
+Good news – your order has shipped and should arrive in 2-3 working days.
+
+Order #PW-20931
+1 x A4 portfolio book, matte, 24 pages – £48.00
+Shipping – £4.50
+Total – £52.50
+
+Track your parcel: https://pennywellprint.example/track/PW-20931
+
+Thanks for shopping with us!
+Pennywell Print

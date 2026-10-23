@@ -1,0 +1,18 @@
+{
+  "label": "payment",
+  "extraction": {
+    "job": null,
+    "travel": [],
+    "payment": {
+      "amount": 900,
+      "currency": "GBP",
+      "status": "invoiced",
+      "sent_at": "2026-11-16",
+      "due_at": "2026-12-05",
+      "paid_at": null
+    },
+    "changes": [],
+    "confidence": 0.9,
+    "uncertain_fields": []
+  }
+}

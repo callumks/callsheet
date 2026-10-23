@@ -1,0 +1,27 @@
+{
+  "label": "new_booking",
+  "extraction": {
+    "job": {
+      "client": "KASTELL",
+      "agency": "Agentur Lumen",
+      "booker": "Lena Voss",
+      "job_type": "lookbook",
+      "status": "confirmed",
+      "start_date": "2026-11-10",
+      "end_date": "2026-11-11",
+      "call_time": "09:00",
+      "wrap_time": null,
+      "location": "Lumen Studio 3, Köpenicker Str. 48, 10179 Berlin",
+      "timezone": "Europe/Berlin",
+      "day_rate": 750,
+      "currency": "EUR",
+      "usage": "lookbook + e-commerce, 1 year worldwide, included",
+      "notes": "Travel booked separately by the client."
+    },
+    "travel": [],
+    "payment": null,
+    "changes": [],
+    "confidence": 0.9,
+    "uncertain_fields": []
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "label": "update",
+  "extraction": {
+    "job": {
+      "client": "Halden & Co",
+      "agency": "Select East",
+      "booker": "Dana Reyes",
+      "job_type": "campaign",
+      "status": "option_2",
+      "start_date": "2026-11-03",
+      "end_date": "2026-11-04",
+      "call_time": "08:00",
+      "wrap_time": null,
+      "location": "Harbor Loft, 55 Water St, Brooklyn, NY 11201",
+      "timezone": "America/New_York",
+      "day_rate": null,
+      "currency": null,
+      "usage": null,
+      "notes": null
+    },
+    "travel": [],
+    "payment": null,
+    "changes": ["location Eastside Studios, 12 W 21st St → Harbor Loft, 55 Water St, Brooklyn"],
+    "confidence": 0.85,
+    "uncertain_fields": []
+  }
+}

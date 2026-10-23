@@ -1,0 +1,18 @@
+{
+  "label": "payment",
+  "extraction": {
+    "job": null,
+    "travel": [],
+    "payment": {
+      "amount": 2250,
+      "currency": "EUR",
+      "status": "to_invoice",
+      "sent_at": null,
+      "due_at": null,
+      "paid_at": null
+    },
+    "changes": [],
+    "confidence": 0.9,
+    "uncertain_fields": []
+  }
+}

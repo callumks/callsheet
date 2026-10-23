@@ -1,0 +1,20 @@
+{
+  "label": "travel",
+  "extraction": {
+    "job": null,
+    "travel": [
+      {
+        "kind": "hotel",
+        "from": null,
+        "to": "Mercer Lane Hotel, 140 Mercer Lane, New York, NY 10012",
+        "depart_at": "2026-11-02T20:00:00.000Z",
+        "arrive_at": "2026-11-05T16:00:00.000Z",
+        "reference": "HTL-88213"
+      }
+    ],
+    "payment": null,
+    "changes": [],
+    "confidence": 0.9,
+    "uncertain_fields": []
+  }
+}

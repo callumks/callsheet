@@ -1,0 +1,27 @@
+{
+  "label": "new_booking",
+  "extraction": {
+    "job": {
+      "client": "Northbound",
+      "agency": "North Agency",
+      "booker": "Jo Booker",
+      "job_type": "e-commerce",
+      "status": "option_1",
+      "start_date": "2026-10-27",
+      "end_date": "2026-10-27",
+      "call_time": "07:00",
+      "wrap_time": null,
+      "location": "Studio Halden, 14 Arch Street, London E2",
+      "timezone": "Europe/London",
+      "day_rate": 1200,
+      "currency": "GBP",
+      "usage": "web + social, 12 months UK – included in the rate",
+      "notes": null
+    },
+    "travel": [],
+    "payment": null,
+    "changes": [],
+    "confidence": 0.9,
+    "uncertain_fields": []
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "label": "update",
+  "extraction": {
+    "job": {
+      "client": "KASTELL",
+      "agency": "Agentur Lumen",
+      "booker": "Lena Voss",
+      "job_type": "lookbook",
+      "status": "confirmed",
+      "start_date": "2026-11-10",
+      "end_date": "2026-11-12",
+      "call_time": "09:00",
+      "wrap_time": null,
+      "location": null,
+      "timezone": "Europe/Berlin",
+      "day_rate": 750,
+      "currency": "EUR",
+      "usage": null,
+      "notes": "Third day added; 2250 EUR total for three days."
+    },
+    "travel": [],
+    "payment": null,
+    "changes": ["end date 2026-11-11 → 2026-11-12 (extra day added)"],
+    "confidence": 0.85,
+    "uncertain_fields": []
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "label": "new_booking",
+  "extraction": {
+    "job": {
+      "client": "Halden & Co",
+      "agency": "Select East",
+      "booker": "Dana Reyes",
+      "job_type": "campaign",
+      "status": "option_2",
+      "start_date": "2026-11-03",
+      "end_date": "2026-11-04",
+      "call_time": "08:00",
+      "wrap_time": null,
+      "location": "Eastside Studios, 12 W 21st St, New York, NY",
+      "timezone": "America/New_York",
+      "day_rate": 2500,
+      "currency": "USD",
+      "usage": "TBC, territories to be confirmed",
+      "notes": null
+    },
+    "travel": [],
+    "payment": null,
+    "changes": [],
+    "confidence": 0.9,
+    "uncertain_fields": []
+  }
+}

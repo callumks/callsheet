@@ -1,0 +1,20 @@
+{
+  "label": "travel",
+  "extraction": {
+    "job": null,
+    "travel": [
+      {
+        "kind": "car",
+        "from": "Home address",
+        "to": "Studio Halden, 14 Arch Street, London E2",
+        "depart_at": "2026-10-27T05:45:00.000Z",
+        "arrive_at": null,
+        "reference": "CAB-4471"
+      }
+    ],
+    "payment": null,
+    "changes": [],
+    "confidence": 0.85,
+    "uncertain_fields": []
+  }
+}

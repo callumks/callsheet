@@ -1,0 +1,27 @@
+{
+  "label": "new_booking",
+  "extraction": {
+    "job": {
+      "client": "Oakridge",
+      "agency": "North Agency",
+      "booker": "Jo Booker",
+      "job_type": "lookbook",
+      "status": "confirmed",
+      "start_date": "2026-11-20",
+      "end_date": "2026-11-20",
+      "call_time": "07:45",
+      "wrap_time": "16:00",
+      "location": "Oakridge HQ, 3rd Floor, 22 Wellington Pl, Leeds LS1",
+      "timezone": "Europe/London",
+      "day_rate": 650,
+      "currency": "GBP",
+      "usage": "lookbook + website, 6 months",
+      "notes": "Parking available on site. Call sheet attached."
+    },
+    "travel": [],
+    "payment": null,
+    "changes": [],
+    "confidence": 0.9,
+    "uncertain_fields": []
+  }
+}

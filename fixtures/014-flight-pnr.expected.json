@@ -1,0 +1,20 @@
+{
+  "label": "travel",
+  "extraction": {
+    "job": null,
+    "travel": [
+      {
+        "kind": "flight",
+        "from": "London Heathrow (LHR)",
+        "to": "New York JFK",
+        "depart_at": "2026-11-02T07:15:00.000Z",
+        "arrive_at": "2026-11-02T15:20:00.000Z",
+        "reference": "K7XP2Q"
+      }
+    ],
+    "payment": null,
+    "changes": [],
+    "confidence": 0.9,
+    "uncertain_fields": []
+  }
+}

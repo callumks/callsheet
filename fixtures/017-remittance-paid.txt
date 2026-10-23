@@ -1,0 +1,23 @@
+From: North Agency Accounts <accounts@northagency.example>
+Subject: Remittance advice – Northbound 27 Oct – paid
+Date: 2026-11-28T09:00:00Z
+Thread: t-001
+
+Dear Callum,
+
+Please find below remittance advice for the following payment, which was made to your nominated account today.
+
+Job: Northbound – e-commerce – 27/10/2026
+Your invoice: CS-0041
+Gross fee: £1,200.00
+Agency commission (20%): -£240.00
+Net paid: £960.00
+Payment date: 28/11/2026
+Payment method: BACS
+
+Please allow 2-3 working days for funds to clear.
+
+Kind regards,
+Accounts Team
+North Agency
+This is an automated message. Please do not reply.

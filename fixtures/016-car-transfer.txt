@@ -1,0 +1,16 @@
+From: Jo Booker <jo@northagency.example>
+Subject: Car for Monday – Northbound
+Date: 2026-10-26T12:30:00Z
+Thread: t-001
+
+Hi Callum,
+
+Car booked for Monday morning so you're not on the first tube.
+
+Pickup: 05:45 from your home address
+Drop: Studio Halden, 14 Arch Street, London E2
+Company: Arch Cars
+Ref: CAB-4471
+Driver will text when outside. It's on the production's account – nothing to pay.
+
+Jo

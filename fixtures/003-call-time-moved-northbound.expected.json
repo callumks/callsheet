@@ -1,0 +1,27 @@
+{
+  "label": "update",
+  "extraction": {
+    "job": {
+      "client": "Northbound",
+      "agency": "North Agency",
+      "booker": "Jo Booker",
+      "job_type": null,
+      "status": "confirmed",
+      "start_date": "2026-10-27",
+      "end_date": "2026-10-27",
+      "call_time": "08:30",
+      "wrap_time": "18:00",
+      "location": null,
+      "timezone": null,
+      "day_rate": null,
+      "currency": null,
+      "usage": null,
+      "notes": null
+    },
+    "travel": [],
+    "payment": null,
+    "changes": ["call time 07:00 → 08:30"],
+    "confidence": 0.85,
+    "uncertain_fields": []
+  }
+}

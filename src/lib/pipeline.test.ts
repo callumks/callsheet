@@ -81,7 +81,8 @@ const fakes = {
   accessToken: async () => "tok",
   listNewMessageIds: async () => ({ ids: Object.keys(inbox), historyId: "h-200" }),
   getMessageMeta: async (_t: string, id: string): Promise<MessageMeta> => {
-    const { text: _text, ...meta } = inbox[id];
+    const meta: MessageMeta & { text?: string } = { ...inbox[id] };
+    delete meta.text;
     return meta;
   },
   getMessageBody: async (_t: string, id: string) => {

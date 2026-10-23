@@ -1,0 +1,27 @@
+{
+  "label": "update",
+  "extraction": {
+    "job": {
+      "client": "Tweedside",
+      "agency": "North Agency",
+      "booker": "Priya Shah",
+      "job_type": null,
+      "status": "cancelled",
+      "start_date": "2026-11-24",
+      "end_date": "2026-11-25",
+      "call_time": null,
+      "wrap_time": null,
+      "location": null,
+      "timezone": null,
+      "day_rate": null,
+      "currency": null,
+      "usage": null,
+      "notes": null
+    },
+    "travel": [],
+    "payment": null,
+    "changes": ["status option_1 → cancelled (released)"],
+    "confidence": 0.9,
+    "uncertain_fields": []
+  }
+}

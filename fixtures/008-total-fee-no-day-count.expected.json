@@ -1,0 +1,27 @@
+{
+  "label": "new_booking",
+  "extraction": {
+    "job": {
+      "client": "Ardent",
+      "agency": "North Agency",
+      "booker": "Priya Shah",
+      "job_type": "campaign + e-commerce",
+      "status": "confirmed",
+      "start_date": "2026-11-17",
+      "end_date": "2026-11-19",
+      "call_time": "08:00",
+      "wrap_time": null,
+      "location": "Ardent Studio, Unit 4 Canal Works, Leeds LS10",
+      "timezone": "Europe/London",
+      "day_rate": null,
+      "currency": "GBP",
+      "usage": null,
+      "notes": "Fee £3,600 all-in for the shoot; day count not explicit. Call 08:00 on the 17th, later days TBC."
+    },
+    "travel": [],
+    "payment": null,
+    "changes": [],
+    "confidence": 0.75,
+    "uncertain_fields": ["day_rate"]
+  }
+}

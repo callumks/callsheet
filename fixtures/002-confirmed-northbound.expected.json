@@ -1,0 +1,27 @@
+{
+  "label": "update",
+  "extraction": {
+    "job": {
+      "client": "Northbound",
+      "agency": "North Agency",
+      "booker": "Jo Booker",
+      "job_type": "e-commerce",
+      "status": "confirmed",
+      "start_date": "2026-10-27",
+      "end_date": "2026-10-27",
+      "call_time": "07:00",
+      "wrap_time": "18:00",
+      "location": "Studio Halden, 14 Arch Street, London E2",
+      "timezone": "Europe/London",
+      "day_rate": 1200,
+      "currency": "GBP",
+      "usage": "web + social 12 months UK, included",
+      "notes": "Bring nude underwear and clean white trainers. Call sheet to follow Friday."
+    },
+    "travel": [],
+    "payment": null,
+    "changes": ["status option_1 → confirmed", "wrap time 18:00 added"],
+    "confidence": 0.9,
+    "uncertain_fields": []
+  }
+}

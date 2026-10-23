@@ -1,0 +1,27 @@
+{
+  "label": "new_booking",
+  "extraction": {
+    "job": {
+      "client": "Harbourline",
+      "agency": "North Agency",
+      "booker": "Jo Booker",
+      "job_type": "e-commerce",
+      "status": "option_1",
+      "start_date": "2026-10-23",
+      "end_date": "2026-10-23",
+      "call_time": "09:00",
+      "wrap_time": null,
+      "location": "Harbourline in-house studio, Bristol",
+      "timezone": "Europe/London",
+      "day_rate": 650,
+      "currency": "GBP",
+      "usage": null,
+      "notes": null
+    },
+    "travel": [],
+    "payment": null,
+    "changes": [],
+    "confidence": 0.8,
+    "uncertain_fields": ["start_date"]
+  }
+}

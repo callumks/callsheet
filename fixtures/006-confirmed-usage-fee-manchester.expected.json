@@ -1,0 +1,27 @@
+{
+  "label": "new_booking",
+  "extraction": {
+    "job": {
+      "client": "Fenwick Row",
+      "agency": "North Agency",
+      "booker": "Priya Shah",
+      "job_type": "campaign",
+      "status": "confirmed",
+      "start_date": "2026-11-14",
+      "end_date": "2026-11-14",
+      "call_time": "07:30",
+      "wrap_time": "17:30",
+      "location": "Mill Nine Studios, 9 Jersey St, Manchester M4",
+      "timezone": "Europe/London",
+      "day_rate": 900,
+      "currency": "GBP",
+      "usage": "£1,500 for 12 months UK digital & social, paid separately on top of the day rate",
+      "notes": "Hair and make-up on set. Arrive with clean hair, no product."
+    },
+    "travel": [],
+    "payment": null,
+    "changes": [],
+    "confidence": 0.9,
+    "uncertain_fields": []
+  }
+}
