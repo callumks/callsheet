@@ -13,3 +13,7 @@ if (process.env.NODE_ENV !== "production") g.__pg = client;
 export const db = drizzle(client, { schema });
 export type Db = typeof db;
 export { schema };
+
+/** A db or a transaction: what the pipeline helpers accept. */
+export type Tx = Parameters<Parameters<Db["transaction"]>[0]>[0];
+export type Dbx = Db | Tx;
