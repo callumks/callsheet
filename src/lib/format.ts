@@ -30,6 +30,7 @@ export function formatMoney(amount: string | number | null | undefined, currency
     return new Intl.NumberFormat("en-GB", {
       style: "currency",
       currency: currency ?? "GBP",
+      currencyDisplay: "narrowSymbol",
       maximumFractionDigits: Number.isInteger(n) ? 0 : 2,
     }).format(n);
   } catch {

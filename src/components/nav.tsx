@@ -2,36 +2,41 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { CalendarIcon, ChartIcon } from "./icons";
 
 const items = [
-  { href: "/", label: "Upcoming" },
-  { href: "/earnings", label: "Earnings" },
+  { href: "/", label: "Upcoming", Icon: CalendarIcon },
+  { href: "/earnings", label: "Earnings", Icon: ChartIcon },
 ] as const;
 
 export function Nav() {
   const path = usePathname();
   return (
+    <>
+    <div aria-hidden className="pointer-events-none fixed inset-x-0 bottom-0 z-30 h-28 bg-gradient-to-t from-ground via-ground/80 to-transparent" />
     <nav
       aria-label="Primary"
-      className="fixed inset-x-0 bottom-0 z-40 flex justify-center pb-[max(1rem,env(safe-area-inset-bottom))] pointer-events-none"
+      className="pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center pb-[max(1.25rem,env(safe-area-inset-bottom))]"
     >
-      <div className="pointer-events-auto flex gap-1 rounded-full bg-ink p-1 text-ground shadow-lg shadow-ink/20">
-        {items.map((it) => {
-          const active = it.href === "/" ? path === "/" || path.startsWith("/jobs") : path.startsWith(it.href);
+      <div className="pointer-events-auto flex gap-1 rounded-full bg-chrome p-1.5 shadow-[0_8px_30px_-6px_rgb(0_0_0/0.18),0_0_0_1px_var(--hairline)] backdrop-blur-xl backdrop-saturate-150">
+        {items.map(({ href, label, Icon }) => {
+          const active = href === "/" ? path === "/" || path.startsWith("/jobs") || path === "/review" : path.startsWith(href);
           return (
             <Link
-              key={it.href}
-              href={it.href}
+              key={href}
+              href={href}
               aria-current={active ? "page" : undefined}
-              className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
-                active ? "bg-ground text-ink" : "text-ground/70 hover:text-ground"
+              className={`press flex items-center gap-2 rounded-full px-4 py-2.5 text-[0.9rem] font-medium ${
+                active ? "bg-ink text-ground" : "text-ink-2 hover:text-ink"
               }`}
             >
-              {it.label}
+              <Icon />
+              {label}
             </Link>
           );
         })}
       </div>
     </nav>
+    </>
   );
 }

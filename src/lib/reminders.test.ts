@@ -47,7 +47,7 @@ describe("planReminders", () => {
       ["call_time", "2027-07-05T09:00:00.000Z"], // 05:00 EDT
       ["invoice_due", "2027-07-06T14:00:00.000Z"], // 10:00 EDT on the 6th
     ]);
-    expect(plan[2].body).toBe("Wrapped Mon 5 Jul · US$2,500/day");
+    expect(plan[2].body).toBe("Wrapped Mon 5 Jul · $2,500/day");
   });
   it("skips options, cancelled, and the past", () => {
     expect(planReminders({ ...job, status: "option_1" }, { now })).toEqual([]);

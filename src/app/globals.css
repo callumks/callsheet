@@ -3,19 +3,28 @@
 /* One ground, one ink, one accent. Everything else is ink at an opacity. */
 :root {
   --ground: #ffffff;
-  --ink: #141414;
+  --ink: #111111;
   --accent: #f04e23;
-  --ink-2: color-mix(in oklab, var(--ink) 62%, var(--ground));
-  --ink-3: color-mix(in oklab, var(--ink) 38%, var(--ground));
-  --ink-4: color-mix(in oklab, var(--ink) 10%, var(--ground));
-  --ink-5: color-mix(in oklab, var(--ink) 5%, var(--ground));
+  --ink-2: color-mix(in oklab, var(--ink) 64%, var(--ground));
+  --ink-3: color-mix(in oklab, var(--ink) 42%, var(--ground));
+  --ink-4: color-mix(in oklab, var(--ink) 12%, var(--ground));
+  --ink-5: color-mix(in oklab, var(--ink) 4.5%, var(--ground));
+  --surface: var(--ink-5);
+  --hairline: color-mix(in oklab, var(--ink) 8%, var(--ground));
+  --accent-soft: color-mix(in oklab, var(--accent) 10%, var(--ground));
+  --chrome: color-mix(in oklab, var(--ground) 78%, transparent);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --ground: #0d0d0d;
-    --ink: #f2f2f2;
+    --ground: #0b0b0c;
+    --ink: #f4f4f5;
     --accent: #ff6a3d;
+    --ink-4: color-mix(in oklab, var(--ink) 22%, var(--ground));
+    --ink-5: color-mix(in oklab, var(--ink) 6.5%, var(--ground));
+    --hairline: color-mix(in oklab, var(--ink) 10%, var(--ground));
+    --accent-soft: color-mix(in oklab, var(--accent) 16%, var(--ground));
+    --chrome: color-mix(in oklab, #1a1a1c 82%, transparent);
   }
 }
 
@@ -26,7 +35,11 @@
   --color-ink-3: var(--ink-3);
   --color-ink-4: var(--ink-4);
   --color-ink-5: var(--ink-5);
+  --color-surface: var(--surface);
+  --color-hairline: var(--hairline);
   --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-chrome: var(--chrome);
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, monospace;
 }
@@ -39,14 +52,34 @@ body {
   background: var(--ground);
   color: var(--ink);
   font-family: var(--font-sans);
+  font-feature-settings: "ss01", "cv11";
+  letter-spacing: -0.006em;
   -webkit-tap-highlight-color: transparent;
+  -webkit-font-smoothing: antialiased;
   overscroll-behavior-y: contain;
 }
 
-/* Times and money only. */
+/* Times and money only. Tight tracking keeps "07:00" from looking spaced out. */
 .num {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
+  letter-spacing: -0.04em;
+}
+
+/* Display-size numerals: monospace colons need extra pull-in. */
+.num-display {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.075em;
+}
+
+/* Section label: small, quiet, never shouting. */
+.label {
+  font-size: 0.75rem;
+  line-height: 1rem;
+  font-weight: 500;
+  color: var(--ink-3);
+  letter-spacing: 0.01em;
 }
 
 /* Status dot: solid confirmed, outline 1st option, dashed 2nd option. */
@@ -58,12 +91,29 @@ body {
   flex: none;
 }
 .dot-confirmed { background: var(--ink); }
-.dot-option_1 { border: 1.5px solid var(--ink); }
+.dot-option_1 { box-shadow: inset 0 0 0 1.5px var(--ink); }
 .dot-option_2 { border: 1.5px dashed var(--ink-2); }
 .dot-wrapped { background: var(--ink-3); }
-.dot-cancelled { background: transparent; border: 1.5px solid var(--ink-4); }
-.dot-accent { background: var(--accent); }
+.dot-cancelled { box-shadow: inset 0 0 0 1.5px var(--ink-4); }
 
-@media (display-mode: standalone) {
-  body { padding-top: env(safe-area-inset-top); }
+/* Press feedback for anything tappable. */
+.press {
+  transition: transform 120ms ease, opacity 120ms ease, background-color 150ms ease;
+}
+.press:active {
+  transform: scale(0.985);
+  opacity: 0.85;
+}
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+.rise {
+  animation: rise 320ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rise { animation: none; }
+  .press:active { transform: none; }
 }
