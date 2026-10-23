@@ -75,6 +75,6 @@ iOS only delivers web push to installed PWAs (iOS 16.4+). Open the app in Safari
 | Command | Does |
 |---|---|
 | `pnpm seed:demo [--reset]` | Fills the database with fictional jobs. `--reset` wipes it first. |
-| `pnpm screenshots [url]` | Captures every screen, light and dark, into `docs/screenshots`. |
+| `pnpm screenshots [url]` | Captures every screen, light and dark, into `docs/screens`. |
 | `pnpm keygen` | Prints a new token encryption key. |
 | `pnpm vapid` | Prints a new VAPID key pair. |

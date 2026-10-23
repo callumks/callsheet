@@ -8,7 +8,7 @@ import { db } from "../src/db";
 import { jobs } from "../src/db/schema";
 
 const base = process.argv[2] ?? "http://localhost:3000";
-const outDir = process.env.SHOTS_DIR ?? "docs/screenshots";
+const outDir = process.env.SHOTS_DIR ?? "docs/screens";
 const full = process.env.SHOTS_FULL === "1";
 const width = Number(process.env.SHOTS_WIDTH ?? 390);
 const chrome = process.env.CHROME_PATH ?? "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";

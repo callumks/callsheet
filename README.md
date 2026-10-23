@@ -8,9 +8,9 @@ A booking lands in Gmail. Fifteen minutes later it's in the app with the right d
 
 <table>
   <tr>
-    <td><picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/upcoming-dark.png"><img src="docs/screenshots/upcoming-light.png" alt="Upcoming: the next job as a hero card, then the next two weeks"></picture></td>
-    <td><picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/job-dark.png"><img src="docs/screenshots/job-light.png" alt="Job detail: every field tap-to-edit"></picture></td>
-    <td><picture><source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/earnings-dark.png"><img src="docs/screenshots/earnings-light.png" alt="Earnings: month total, paid and unpaid split, six months of bars, unpaid list"></picture></td>
+    <td><picture><source media="(prefers-color-scheme: dark)" srcset="docs/screens/upcoming-dark.png"><img src="docs/screens/upcoming-light.png" alt="Upcoming: the next job as a hero card, then the next two weeks"></picture></td>
+    <td><picture><source media="(prefers-color-scheme: dark)" srcset="docs/screens/job-dark.png"><img src="docs/screens/job-light.png" alt="Job detail: every field tap-to-edit"></picture></td>
+    <td><picture><source media="(prefers-color-scheme: dark)" srcset="docs/screens/earnings-dark.png"><img src="docs/screens/earnings-light.png" alt="Earnings: month total, paid and unpaid split, six months of bars, unpaid list"></picture></td>
   </tr>
   <tr>
     <td align="center"><sub>Upcoming</sub></td>
