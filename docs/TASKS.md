@@ -12,7 +12,7 @@ One commit per task. Ticked when it lands on `main`.
 - [x] 06 Filter: agency domain allow-list + booking-word subject match, tested
 - [x] 07 Classify: one cheap LLM call → new_booking / update / travel / payment / irrelevant
 - [x] 08 Extract: strict JSON schema via structured outputs, Zod-validated, nulls over guesses
-- [ ] 09 Upsert: thread-id then agency + client + date-overlap matching, writes jobs / travel / invoices, tested against the DB
+- [x] 09 Upsert: thread-id then agency + client + date-overlap matching, writes jobs / travel / invoices, tested against the DB
 - [x] 10 Reminder scheduling: night-before, 2h-before, invoice-due, overdue, in the job's time zone, tested
 - [ ] 11 Cron: /api/cron/sync runs the five steps, vercel.json schedule, CRON_SECRET
 - [ ] 12 Fixtures: 20+ redacted booking emails with expected output, `pnpm eval` runs the extractor over them
