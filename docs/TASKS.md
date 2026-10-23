@@ -19,7 +19,7 @@ One commit per task. Ticked when it lands on `main`.
 
 ## Milestone 2 — Screens
 
-- [ ] 13 Upcoming: hero card for the next job, 14-day list with status dots, pull to resync
+- [x] 13 Upcoming: hero card for the next job, 14-day list with status dots, pull to resync
 - [ ] 14 Job detail: every field inline-editable, mark invoiced / paid, Needs review banner, source email link
 - [ ] 15 Earnings: month total, paid / invoiced / to-invoice bar, 6-month bars, unpaid list
 
