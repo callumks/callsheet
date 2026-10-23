@@ -42,7 +42,7 @@ Gmail (read-only)
 
 ## Stack
 
-Next.js 16 (App Router) · TypeScript · Tailwind 4 · Postgres + Drizzle · Anthropic SDK · Vercel Cron · Web Push (VAPID) · Vitest
+Next.js 16 (App Router) · TypeScript · Tailwind 4 · Postgres + Drizzle · Anthropic SDK · Railway (app, Postgres, cron) · Web Push (VAPID) · Vitest
 
 ## Running locally
 
@@ -67,7 +67,7 @@ pnpm dev
 | `TOKEN_ENCRYPTION_KEY` | `pnpm keygen` |
 | `ANTHROPIC_API_KEY` | Anthropic console. |
 | `NEXT_PUBLIC_VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` | `pnpm vapid` |
-| `CRON_SECRET` | Any random string. Vercel sends it to the cron routes. |
+| `CRON_SECRET` | Any random string. The cron services send it to the cron routes. |
 | `AGENCY_DOMAINS` | Comma-separated sender domains that are always read. |
 
 Sign in at `/sign-in`, then pull down on Upcoming to run the first sync. Turn on notifications from the Earnings screen. On iPhone, add the app to the home screen first; iOS only allows web push for installed PWAs (16.4+).
@@ -105,7 +105,17 @@ public/sw.js          push service worker
 
 ## Deploying
 
-Vercel plus Neon or Supabase. `vercel.json` schedules the sync every 15 minutes and the reminder sender every 5. Vercel's Hobby plan only runs crons once a day, so these schedules need Pro, or the same two routes can be called from an external scheduler with the `CRON_SECRET` bearer.
+Railway, three services from this repo plus Postgres:
+
+| Service | Config file | Runs |
+|---|---|---|
+| `web` | `railway.json` | Builds the app, applies migrations before each deploy, serves it. |
+| `cron-sync` | `railway/cron-sync.json` | Every 15 min: calls `/api/cron/sync`, then exits. |
+| `cron-reminders` | `railway/cron-reminders.json` | Every 5 min: calls `/api/cron/reminders`, then exits. |
+
+1. Create a project, add Postgres, and add the repo three times, naming the services as above. Set each cron service's config file path in its settings.
+2. On `web`, set the variables from `.env.example`, with `DATABASE_URL=${{Postgres.DATABASE_URL}}`. Generate a domain and set `GOOGLE_REDIRECT_URI` to `https://<domain>/api/auth/callback/google`, and add the same URI to the Google OAuth client.
+3. On both cron services, set `APP_URL=https://${{web.RAILWAY_PUBLIC_DOMAIN}}` and `CRON_SECRET=${{web.CRON_SECRET}}`.
 
 ## Status
 
