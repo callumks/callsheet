@@ -4,7 +4,7 @@ import { db } from "@/db";
 import { emails, googleAccounts, jobs } from "@/db/schema";
 import type { Extraction } from "./extract";
 import type { MessageBody, MessageMeta } from "./gmail";
-import { runSync } from "./pipeline";
+import { MAX_FAILURES, runSync } from "./pipeline";
 import { resetDb } from "@/test/db";
 
 const NOW = new Date("2027-03-01T10:00:00Z");
@@ -129,9 +129,52 @@ describe("runSync", () => {
   it("is idempotent across runs", async () => {
     await runSync(fakes);
     const s = await runSync(fakes);
-    expect(s.skipped).toBe(4);
+    expect(s.skipped).toBe(3); // m4 failed, so it is tried again
     expect(s.applied).toBe(0);
     expect(await db.select().from(jobs)).toHaveLength(1);
+  });
+
+  it("retries unfinished emails that history no longer lists", async () => {
+    await runSync({ ...fakes, classify: async () => Promise.reject(new Error("no api key")) });
+    const s = await runSync({ ...fakes, listNewMessageIds: async () => ({ ids: [], historyId: "h-300" }) });
+    expect(s).toMatchObject({ fetched: 0, retried: 3, applied: 1, irrelevant: 1 });
+    expect(s.errors).toEqual([{ gmailId: "m4", error: "model exploded" }]);
+
+    const all = await db.select().from(emails).orderBy(emails.gmailId);
+    expect(all.map((e) => [e.gmailId, !!e.processedAt, e.error, e.failures])).toEqual([
+      ["m1", true, null, 1],
+      ["m2", true, null, 0],
+      ["m3", true, null, 1],
+      ["m4", false, "model exploded", 2],
+    ]);
+    expect(await db.select().from(jobs)).toHaveLength(1);
+  });
+
+  it("gives up on an email after MAX_FAILURES runs", async () => {
+    for (let i = 0; i < MAX_FAILURES; i++) await runSync(fakes);
+    const [m4] = await db.select().from(emails).where(eq(emails.gmailId, "m4"));
+    expect(m4.failures).toBe(MAX_FAILURES);
+
+    bodiesRead.length = 0;
+    const s = await runSync(fakes);
+    expect(s.errors).toEqual([]);
+    expect(bodiesRead).toEqual([]);
+  });
+
+  it("holds the history cursor when a message fails before it is stored", async () => {
+    const s = await runSync({
+      ...fakes,
+      getMessageMeta: async (t: string, id: string) => {
+        if (id === "m3") throw new Error("Gmail 403: quota");
+        return fakes.getMessageMeta(t, id);
+      },
+    });
+    expect(s.errors).toEqual([
+      { gmailId: "m3", error: "Gmail 403: quota" },
+      { gmailId: "m4", error: "model exploded" },
+    ]);
+    const [acct] = await db.select().from(googleAccounts);
+    expect(acct.lastHistoryId).toBe("h-100");
   });
 
   it("does nothing without a connected account", async () => {

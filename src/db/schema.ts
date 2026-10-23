@@ -1,6 +1,7 @@
 import {
   boolean,
   date,
+  integer,
   numeric,
   pgEnum,
   pgTable,
@@ -70,6 +71,8 @@ export const emails = pgTable("emails", {
   classifiedAs: emailClass("classified_as"),
   processedAt: timestamp("processed_at", { withTimezone: true }),
   error: text("error"),
+  // Failed runs so far. Unprocessed emails are retried until this hits the cap.
+  failures: integer("failures").notNull().default(0),
 });
 
 // A multi-day job is one row with a date range.

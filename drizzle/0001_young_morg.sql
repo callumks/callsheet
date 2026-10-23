@@ -1,0 +1,1 @@
+ALTER TABLE "emails" ADD COLUMN "failures" integer DEFAULT 0 NOT NULL;
