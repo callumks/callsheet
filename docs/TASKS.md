@@ -36,4 +36,4 @@ One commit per task. Ticked when it lands on `main`.
 
 ## Phase 2 (not in v1)
 
-- [ ] 21 Tool API over the database: list_jobs, get_job, earnings, unpaid, draft_invoice_chase
+- [x] 21 Tool API over the database: list_jobs, get_job, earnings, unpaid, draft_invoice_chase

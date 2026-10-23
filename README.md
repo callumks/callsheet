@@ -109,4 +109,4 @@ Vercel plus Neon or Supabase. `vercel.json` schedules the sync every 15 minutes 
 
 ## Status
 
-v1 milestones 1 to 4 are built. Phase 2, a chat agent over this data, is next; see the spec.
+v1 milestones 1 to 4 are built. Phase 2 has started: a read-only tool API at `/api/tools/*` (`list_jobs`, `get_job`, `earnings`, `unpaid`, `draft_invoice_chase`) for an agent runtime, authenticated by `AGENT_TOKEN`. The Telegram bot on Hermes or OpenClaw is next.
