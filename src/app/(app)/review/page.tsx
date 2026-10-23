@@ -1,8 +1,8 @@
-import Link from "next/link";
 import { desc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { jobs } from "@/db/schema";
 import { JobList } from "@/components/job-row";
+import { BackBar, PageHeader } from "@/components/page-header";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Needs review" };
@@ -11,12 +11,14 @@ export default async function ReviewPage() {
   const rows = await db.select().from(jobs).where(eq(jobs.needsReview, true)).orderBy(desc(jobs.updatedAt));
   return (
     <section>
-      <Link href="/" className="text-sm text-ink-3">← Upcoming</Link>
-      <h1 className="mt-4 text-2xl font-semibold tracking-tight">Needs review</h1>
-      <p className="mt-1 text-sm text-ink-2">The extractor wasn&apos;t sure about these. Open one, fix any field, then tap Looks right.</p>
-      <div className="mt-4">
-        <JobList jobs={rows} empty="Everything checks out." />
-      </div>
+      <BackBar href="/" label="Upcoming" />
+      <PageHeader title="Needs review" />
+      <p className="-mt-3 mb-6 text-ink-2">The extractor wasn&apos;t sure about these. Open one, fix anything that&apos;s off, then tap Looks right.</p>
+      {rows.length ? (
+        <JobList jobs={rows} />
+      ) : (
+        <p className="rounded-2xl bg-surface px-4 py-6 text-center text-ink-3">All clear.</p>
+      )}
     </section>
   );
 }

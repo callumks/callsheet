@@ -14,11 +14,12 @@ type Props = {
   onSave: (raw: string) => Promise<{ error?: string } | void>;
 };
 
-/** Tap the value to edit it; blur or Enter saves; Escape cancels. */
-export function InlineField({ label, value, display, placeholder = "—", type = "text", options, mono, multiline, onSave }: Props) {
+/** A row in an inset group. Tap the value to edit; blur or Enter saves; Escape cancels. */
+export function InlineField({ label, value, display, placeholder = "Add", type = "text", options, mono, multiline, onSave }: Props) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value ?? "");
   const [error, setError] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
   const [pending, start] = useTransition();
   const ref = useRef<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(null);
 
@@ -30,7 +31,11 @@ export function InlineField({ label, value, display, placeholder = "—", type =
       if (r && "error" in r && r.error) {
         setError(r.error);
         setDraft(value ?? "");
-      } else setError(null);
+      } else {
+        setError(null);
+        setSaved(true);
+        setTimeout(() => setSaved(false), 1200);
+      }
     });
   };
 
@@ -42,7 +47,7 @@ export function InlineField({ label, value, display, placeholder = "—", type =
   };
 
   const common = {
-    className: `w-full bg-transparent text-right outline-none ${mono ? "num" : ""}`,
+    className: `w-full rounded-lg bg-ground px-2 py-1 text-right outline-none ring-1 ring-hairline focus:ring-ink-3 ${mono ? "num" : ""}`,
     value: draft,
     disabled: pending,
     onBlur: () => commit(draft),
@@ -56,8 +61,8 @@ export function InlineField({ label, value, display, placeholder = "—", type =
   };
 
   return (
-    <div className="flex items-start justify-between gap-4 py-3">
-      <span className="shrink-0 text-ink-3">{label}</span>
+    <div className={`flex gap-4 px-4 py-3.5 ${multiline ? "items-start" : "items-center"}`}>
+      <span className="shrink-0 text-ink-2">{label}</span>
       <div className="min-w-0 flex-1 text-right">
         {editing ? (
           type === "select" ? (
@@ -90,9 +95,10 @@ export function InlineField({ label, value, display, placeholder = "—", type =
           <button
             type="button"
             onClick={open}
-            className={`max-w-full break-words text-right ${mono ? "num" : ""} ${value === null ? "text-ink-3" : ""} ${pending ? "opacity-50" : ""}`}
+            className={`max-w-full break-words text-right transition-opacity ${mono ? "num" : ""} ${value === null ? "text-ink-3" : ""} ${pending ? "opacity-40" : ""}`}
           >
             {display ?? value ?? placeholder}
+            {saved && <span className="ml-1.5 text-xs text-ink-3">Saved</span>}
           </button>
         )}
         {error && <p className="mt-1 text-xs text-accent">{error}</p>}
