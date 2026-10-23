@@ -21,7 +21,7 @@ One commit per task. Ticked when it lands on `main`.
 
 - [x] 13 Upcoming: hero card for the next job, 14-day list with status dots, pull to resync
 - [x] 14 Job detail: every field inline-editable, mark invoiced / paid, Needs review banner, source email link
-- [ ] 15 Earnings: month total, paid / invoiced / to-invoice bar, 6-month bars, unpaid list
+- [x] 15 Earnings: month total, paid / invoiced / to-invoice bar, 6-month bars, unpaid list
 
 ## Milestone 3 — Reminders
 
