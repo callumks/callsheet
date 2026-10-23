@@ -24,12 +24,12 @@ async function main() {
   await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
   await browser.setCookie({ name: "cs_session", value: token, domain: new URL(base).hostname, path: "/", httpOnly: true });
 
-  const shots: [string, string][] = [["upcoming", "/"], ["job", `/jobs/${job?.id}`], ["earnings", "/earnings"], ["sign-in", "/sign-in"]];
+  const shots: [string, string][] = [["upcoming", "/"], ["job", `/jobs/${job?.id}`], ["earnings", "/earnings"]];
   for (const scheme of ["light", "dark"] as const) {
     await page.emulateMediaFeatures([{ name: "prefers-color-scheme", value: scheme }]);
     for (const [name, path] of shots) {
       await page.goto(base + path, { waitUntil: "networkidle0" });
-      await page.screenshot({ path: `docs/screenshots/${name}-${scheme}.png`, fullPage: name === "job" });
+      await page.screenshot({ path: `docs/screenshots/${name}-${scheme}.png`, fullPage: false });
     }
   }
   await browser.close();
