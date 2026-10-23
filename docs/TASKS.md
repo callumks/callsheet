@@ -31,7 +31,7 @@ One commit per task. Ticked when it lands on `main`.
 ## Milestone 4 — Polish and ship
 
 - [x] 18 Empty, loading and error states; dark mode pass
-- [ ] 19 Demo seed: `pnpm seed:demo` fills the DB with fake jobs for screenshots
+- [x] 19 Demo seed: `pnpm seed:demo` fills the DB with fake jobs for screenshots
 - [ ] 20 README: architecture, setup, screenshots, status
 
 ## Phase 2 (not in v1)
