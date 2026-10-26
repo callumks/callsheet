@@ -20,6 +20,7 @@
     },
     "travel": [],
     "payment": null,
+    "expenses": [],
     "changes": ["status option_1 → confirmed", "wrap time 18:00 added"],
     "confidence": 0.9,
     "uncertain_fields": []

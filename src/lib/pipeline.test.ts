@@ -68,6 +68,7 @@ const extraction: Extraction = {
   },
   travel: [],
   payment: null,
+  expenses: [],
   changes: [],
   confidence: 0.9,
   uncertain_fields: [],

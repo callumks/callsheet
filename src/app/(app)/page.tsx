@@ -16,7 +16,7 @@ export default async function UpcomingPage() {
     <Resync title="Upcoming" lastSyncedAt={sync?.lastSyncedAt ?? null}>
       {review > 0 && (
         <Link href="/review" className="press mb-4 flex items-center justify-between rounded-2xl bg-accent-soft px-4 py-3 text-sm font-medium text-accent">
-          {review === 1 ? "1 job needs a quick check" : `${review} jobs need a quick check`}
+          {review === 1 ? "1 item needs a quick check" : `${review} items need a quick check`}
           <ChevronRight />
         </Link>
       )}

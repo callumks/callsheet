@@ -1,9 +1,9 @@
 // Read side for the three screens. Plain Drizzle, no caching: one user,
 // small tables, and the data must be live after a sync.
 
-import { and, asc, desc, eq, gte, inArray, isNotNull, lte, ne, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, isNotNull, isNull, lte, ne, or, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { emails, googleAccounts, invoices, jobs, reminders, travel, type Invoice, type Job } from "@/db/schema";
+import { emails, expenses, googleAccounts, invoices, jobs, reminders, travel, type Expense, type Invoice, type Job } from "@/db/schema";
 import { addDays } from "./reminders";
 
 export function today(): string {
@@ -48,20 +48,28 @@ export async function jobDetail(id: string) {
   if (!/^[0-9a-f-]{36}$/i.test(id)) return null;
   const [job] = await db.select().from(jobs).where(eq(jobs.id, id)).limit(1);
   if (!job) return null;
-  const [trips, [invoice], rems, source] = await Promise.all([
+  const [trips, [invoice], rems, source, spent] = await Promise.all([
     db.select().from(travel).where(eq(travel.jobId, id)).orderBy(asc(travel.departAt)),
     db.select().from(invoices).where(eq(invoices.jobId, id)).limit(1),
     db.select().from(reminders).where(eq(reminders.jobId, id)).orderBy(asc(reminders.sendAt)),
     job.sourceEmailId
       ? db.select().from(emails).where(eq(emails.id, job.sourceEmailId)).limit(1).then((r) => r[0] ?? null)
       : Promise.resolve(null),
+    db.select().from(expenses).where(eq(expenses.jobId, id)).orderBy(asc(expenses.incurredOn)),
   ]);
-  return { job, travel: trips, invoice: invoice ?? null, reminders: rems, source };
+  return { job, travel: trips, invoice: invoice ?? null, reminders: rems, source, expenses: spent };
 }
 
 export async function needsReviewCount() {
-  const [{ n }] = await db.select({ n: sql<number>`count(*)::int` }).from(jobs).where(eq(jobs.needsReview, true));
-  return n;
+  const [[{ n }], [{ e }]] = await Promise.all([
+    db.select({ n: sql<number>`count(*)::int` }).from(jobs).where(eq(jobs.needsReview, true)),
+    db.select({ e: sql<number>`count(*)::int` }).from(expenses).where(eq(expenses.needsReview, true)),
+  ]);
+  return n + e;
+}
+
+export async function expensesForReview() {
+  return db.select().from(expenses).where(eq(expenses.needsReview, true)).orderBy(desc(expenses.incurredOn));
 }
 
 export async function syncState() {
@@ -79,9 +87,23 @@ export type MonthBar = { month: string; label: string; paid: number; invoiced: n
 export type EarningsView = {
   currency: string;
   otherCurrencies: string[];
-  month: { label: string; total: number; paid: number; invoiced: number; toInvoice: number; overdue: number };
+  month: {
+    label: string;
+    total: number;
+    paid: number;
+    invoiced: number;
+    toInvoice: number;
+    overdue: number;
+    /** Spend the talent keeps: not reimbursable. */
+    expenses: number;
+    net: number;
+  };
   bars: MonthBar[];
   unpaid: { job: Job; invoice: Invoice; view: InvoiceStatusView; daysOverdue: number }[];
+  /** This month's spend, newest first. */
+  spent: { expense: Expense; job: Job | null }[];
+  /** Reimbursable spend not yet paid back, any month. */
+  owedBack: number;
 };
 
 function monthKey(d: string) {
@@ -120,7 +142,7 @@ export async function earnings(day = today(), now = new Date()): Promise<Earning
   for (let i = 5; i >= 0; i--) keys.push(new Date(Date.UTC(y, m - 1 - i, 1)).toISOString().slice(0, 7));
   const bars = new Map<string, MonthBar>(keys.map((k) => [k, { month: k, label: monthLabel(k), paid: 0, invoiced: 0, toInvoice: 0, total: 0 }]));
 
-  const month = { label: monthLabel(thisMonth), total: 0, paid: 0, invoiced: 0, toInvoice: 0, overdue: 0 };
+  const month = { label: monthLabel(thisMonth), total: 0, paid: 0, invoiced: 0, toInvoice: 0, overdue: 0, expenses: 0, net: 0 };
   const unpaid: EarningsView["unpaid"] = [];
 
   for (const r of rows) {
@@ -150,7 +172,27 @@ export async function earnings(day = today(), now = new Date()): Promise<Earning
   }
   unpaid.sort((a, b) => (a.job.startDate ?? "").localeCompare(b.job.startDate ?? ""));
 
-  return { currency, otherCurrencies, month, bars: [...bars.values()], unpaid };
+  // Expenses in the headline currency; an expense with no currency takes it.
+  const spendRows = await db
+    .select({ expense: expenses, job: jobs })
+    .from(expenses)
+    .leftJoin(jobs, eq(jobs.id, expenses.jobId))
+    .where(or(isNull(expenses.currency), eq(expenses.currency, currency)))
+    .orderBy(desc(expenses.incurredOn));
+  let owedBack = 0;
+  const spent: EarningsView["spent"] = [];
+  for (const r of spendRows) {
+    const amt = Number(r.expense.amount);
+    // Held for review: listed, but not counted until it is kept.
+    const counts = !r.expense.needsReview;
+    if (counts && r.expense.reimbursable && !r.expense.reimbursedAt) owedBack += amt;
+    if (monthKey(r.expense.incurredOn) !== thisMonth) continue;
+    spent.push(r);
+    if (counts && !r.expense.reimbursable) month.expenses += amt;
+  }
+  month.net = month.total - month.expenses;
+
+  return { currency, otherCurrencies, month, bars: [...bars.values()], unpaid, spent, owedBack };
 }
 
 export { lte };

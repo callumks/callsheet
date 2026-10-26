@@ -63,3 +63,8 @@ export const BellIcon = ({ className = "h-4 w-4" }: P) => (
     <path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 1.5h-15zM10 20.5a2 2 0 0 0 4 0" />
   </svg>
 );
+export const ReceiptIcon = ({ className = "h-4 w-4" }: P) => (
+  <svg viewBox="0 0 24 24" className={className} aria-hidden {...base}>
+    <path d="M6 3.5h12v17l-2-1.5-2 1.5-2-1.5-2 1.5-2-1.5-2 1.5zM9 8h6M9 11.5h6M9 15h3.5" />
+  </svg>
+);

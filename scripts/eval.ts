@@ -87,6 +87,7 @@ const JOB_FIELDS = [
 ] as const;
 const TRAVEL_FIELDS = ["kind", "reference", "depart_at", "arrive_at"] as const;
 const PAYMENT_FIELDS = ["amount", "currency", "status", "sent_at", "due_at", "paid_at"] as const;
+const EXPENSE_FIELDS = ["kind", "amount", "currency", "date", "paid_by"] as const;
 
 // Free-text fields: a looser match so wording differences don't fail the run.
 const FUZZY = new Set(["client", "agency", "booker", "job_type", "location", "usage", "notes", "from", "to"]);
@@ -162,6 +163,15 @@ export class Scorer {
     } else if (got.payment) {
       this.mismatches.push({ id, field: "payment", expected: null, got: "payment present" });
     }
+
+    this.tally("expenses.count", expected.expenses.length === got.expenses.length);
+    if (expected.expenses.length !== got.expenses.length) {
+      this.mismatches.push({ id, field: "expenses.count", expected: expected.expenses.length, got: got.expenses.length });
+    }
+    expected.expenses.forEach((e, i) => {
+      const g = got.expenses[i];
+      for (const f of EXPENSE_FIELDS) check(`expenses.${f}`, e[f], g ? g[f] : null);
+    });
   }
 
   accuracy(field: string): number | null {

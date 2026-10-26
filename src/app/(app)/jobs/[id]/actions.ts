@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/db";
-import { invoices, jobs, reminders, travel } from "@/db/schema";
+import { expenses, invoices, jobs, reminders, travel } from "@/db/schema";
 import { validCurrency, validDate, validTime, validZone } from "@/lib/extract";
 import { syncReminders } from "@/lib/reminders";
 import { requireSession } from "@/lib/session";
@@ -61,11 +61,11 @@ async function resync(jobId: string) {
   await syncReminders(db, job, { travelLines: trips.map(describeTravel), invoiced: !!inv && inv.status !== "to_invoice" });
 }
 
-function touch(jobId: string) {
+function touch(jobId: string | null) {
   revalidatePath("/");
   revalidatePath("/earnings");
   revalidatePath("/review");
-  revalidatePath(`/jobs/${jobId}`);
+  if (jobId) revalidatePath(`/jobs/${jobId}`);
 }
 
 export async function updateJobField(jobId: string, field: EditableField, raw: string): Promise<{ error?: string }> {
@@ -135,4 +135,59 @@ export async function setInvoiceAmount(jobId: string, raw: string): Promise<{ er
   }
   touch(jobId);
   return {};
+}
+
+// --- Expenses --------------------------------------------------------------
+
+const ExpenseInput = z.object({
+  kind: z.enum(["flight", "hotel", "transport", "food", "kit", "other"]),
+  description: z.string().trim().max(200),
+  amount: z.string(),
+  reimbursable: z.boolean(),
+});
+
+export async function addExpense(jobId: string, input: z.infer<typeof ExpenseInput>): Promise<{ error?: string }> {
+  await requireSession();
+  const x = ExpenseInput.parse(input);
+  const n = Number(x.amount.replace(/[^0-9.]/g, ""));
+  if (!x.amount.trim() || !Number.isFinite(n) || n <= 0) return { error: "Enter an amount" };
+  const [job] = await db.select().from(jobs).where(eq(jobs.id, jobId)).limit(1);
+  if (!job) return { error: "Job not found" };
+  await db.insert(expenses).values({
+    jobId,
+    kind: x.kind,
+    description: x.description || null,
+    amount: String(n),
+    currency: job.currency,
+    incurredOn: job.startDate ?? new Date().toISOString().slice(0, 10),
+    reimbursable: x.reimbursable,
+  });
+  touch(jobId);
+  return {};
+}
+
+async function expenseJob(id: string): Promise<string | null> {
+  const [e] = await db.select({ jobId: expenses.jobId }).from(expenses).where(eq(expenses.id, id)).limit(1);
+  return e?.jobId ?? null;
+}
+
+export async function setExpenseReimbursed(id: string, done: boolean) {
+  await requireSession();
+  await db.update(expenses).set({ reimbursedAt: done ? new Date() : null }).where(eq(expenses.id, id));
+  touch(await expenseJob(id));
+}
+
+/** Review: the expense is right as it stands. */
+export async function keepExpense(id: string) {
+  await requireSession();
+  await db.update(expenses).set({ needsReview: false, reviewReason: null }).where(eq(expenses.id, id));
+  touch(await expenseJob(id));
+}
+
+/** Not a work cost, or entered by mistake. */
+export async function deleteExpense(id: string) {
+  await requireSession();
+  const jobId = await expenseJob(id);
+  await db.delete(expenses).where(eq(expenses.id, id));
+  touch(jobId);
 }

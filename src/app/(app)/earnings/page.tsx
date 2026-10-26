@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { EarningsBars, SplitBar } from "@/components/earnings-bars";
+import { ExpenseRow } from "@/components/expense-row";
 import { Group } from "@/components/group";
 import { PageHeader } from "@/components/page-header";
 import { PushToggle } from "@/components/push-toggle";
@@ -48,6 +49,23 @@ export default async function EarningsPage() {
             ))}
           </dl>
         </div>
+
+        {(m.expenses > 0 || e.owedBack > 0) && (
+          <dl className="mt-5 grid grid-cols-3 gap-3 rounded-2xl bg-surface px-4 py-3.5">
+            <div>
+              <dt className="text-xs text-ink-3">Expenses</dt>
+              <dd className="num mt-1 text-[0.95rem]">{m.expenses ? `−${formatMoney(m.expenses, e.currency)}` : formatMoney(0, e.currency)}</dd>
+            </div>
+            <div>
+              <dt className="text-xs text-ink-3">Net</dt>
+              <dd className="num mt-1 text-[0.95rem] font-medium">{formatMoney(m.net, e.currency)}</dd>
+            </div>
+            <div>
+              <dt className="text-xs text-ink-3">Owed back</dt>
+              <dd className="num mt-1 text-[0.95rem]">{formatMoney(e.owedBack, e.currency)}</dd>
+            </div>
+          </dl>
+        )}
       </div>
 
       <section className="mt-10">
@@ -85,6 +103,21 @@ export default async function EarningsPage() {
           <div className="px-4 py-3.5 text-ink-3">Nothing owed. Nice.</div>
         )}
       </Group>
+
+      {e.spent.length > 0 && (
+        <Group title="Spent this month" footer="Costs you'll be paid back for count under Owed back. Dotted ones wait in review and aren't counted yet.">
+          {e.spent.map(({ expense, job }) => (
+            <ExpenseRow
+              key={expense.id}
+              expense={expense}
+              currency={e.currency}
+              context={job ? jobName(job) : "No job"}
+              href={job ? `/jobs/${job.id}` : "/review"}
+              mode="view"
+            />
+          ))}
+        </Group>
+      )}
 
       <Group title="Settings">
         <PushToggle />

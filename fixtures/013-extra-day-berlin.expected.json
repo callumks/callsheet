@@ -20,6 +20,7 @@
     },
     "travel": [],
     "payment": null,
+    "expenses": [],
     "changes": ["end date 2026-11-11 → 2026-11-12 (extra day added)"],
     "confidence": 0.85,
     "uncertain_fields": []

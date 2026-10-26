@@ -7,7 +7,7 @@ export async function resetDb() {
     throw new Error("Refusing to truncate: DATABASE_URL does not look like a test database. Create .env.test.");
   }
   await db.execute(
-    sql`TRUNCATE reminders, invoices, travel, jobs, emails, push_subscriptions, google_accounts RESTART IDENTITY CASCADE`,
+    sql`TRUNCATE reminders, invoices, expenses, travel, jobs, emails, push_subscriptions, google_accounts RESTART IDENTITY CASCADE`,
   );
 }
 

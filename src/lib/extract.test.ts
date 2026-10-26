@@ -21,6 +21,7 @@ const base: Extraction = {
   },
   travel: [{ kind: "flight", from: "LHR", to: "JFK", depart_at: "2026-10-26T07:15:00+01:00", arrive_at: "not a time", reference: "ABC123" }],
   payment: null,
+  expenses: [],
   changes: [],
   confidence: 0.9,
   uncertain_fields: [],

@@ -50,6 +50,15 @@ export const STATUS_LABEL: Record<string, string> = {
   wrapped: "Wrapped",
 };
 
+export const EXPENSE_LABEL: Record<string, string> = {
+  flight: "Flight",
+  hotel: "Hotel",
+  transport: "Transport",
+  food: "Food",
+  kit: "Kit",
+  other: "Other",
+};
+
 /** Inclusive list of YYYY-MM-DD between two dates. */
 export function eachDay(start: string, end: string | null): string[] {
   const out: string[] = [];

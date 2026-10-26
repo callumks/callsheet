@@ -1,0 +1,26 @@
+From: Northwind Air <e-ticket@northwindair.example>
+Subject: Your e-ticket receipt R4TN8W: 5 Nov 2026 14:50
+Date: 2026-10-31T09:12:00Z
+Thread: t-023
+
+Dear Mr Stoddart,
+
+Thank you for booking with Northwind Air. Your payment has been taken and your e-ticket is attached.
+
+Booking reference: R4TN8W
+Passenger: MR CALLUM STODDART
+
+Outbound
+Thu 5 Nov 2026
+NW 982 London Heathrow (LHR) T5 14:50 – Berlin Brandenburg (BER) 17:45
+Economy, 1 x 23kg
+
+Payment summary
+Fare               GBP 142.00
+Taxes and charges  GBP  44.60
+Total charged      GBP 186.60
+Paid by Visa Debit ending 4417 (cardholder C STODDART)
+
+Manage your booking at northwindair.example/manage.
+
+Northwind Air

@@ -1,14 +1,16 @@
 // Step 5. Matches an extraction to an existing job (thread id first, then
 // agency + client + date overlap), writes the record, and queues pushes.
 
-import { and, desc, eq, gte, ilike, inArray, isNull, lte, ne, or, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNull, lte, ne, or, sql, type AnyColumn, type SQL } from "drizzle-orm";
 import { db as defaultDb, type Db, type Dbx } from "@/db";
 import {
+  expenses,
   invoices,
   jobs,
   reminders,
   travel,
   type Email,
+  type Expense,
   type Invoice,
   type Job,
   type NewJob,
@@ -27,6 +29,7 @@ export type ApplyResult = {
   changes: Change[];
   travel: Travel[];
   invoice: Invoice | null;
+  expenses: Expense[];
   reviewReasons: string[];
 };
 
@@ -39,6 +42,18 @@ type MatchKey = {
 };
 
 const OPEN = ["option_1", "option_2", "confirmed"] as const;
+
+/**
+ * A name reduced for matching: lowercase, company suffixes and punctuation
+ * gone, so "Lululemon Athletica Canada, Inc." and "lululemon athletica canada inc" agree.
+ */
+function nameKey(v: AnyColumn | SQL) {
+  return sql`regexp_replace(lower(${v}), '\\m(inc|ltd|llc|limited|corp|co|gmbh|plc)\\M|[^a-z0-9]+', '', 'g')`;
+}
+
+function sameName(col: AnyColumn, name: string) {
+  return sql`${nameKey(col)} = ${nameKey(sql`${name}`)}`;
+}
 
 export async function findMatchingJob(db: Dbx, key: MatchKey): Promise<Job | null> {
   // 1. Same thread: strongest signal.
@@ -54,8 +69,8 @@ export async function findMatchingJob(db: Dbx, key: MatchKey): Promise<Job | nul
 
   // 2. Same agency + client with overlapping dates.
   const nameMatch = and(
-    key.agency ? ilike(jobs.agency, key.agency) : sql`true`,
-    key.client ? ilike(jobs.client, key.client) : sql`true`,
+    key.agency ? sameName(jobs.agency, key.agency) : sql`true`,
+    key.client ? sameName(jobs.client, key.client) : sql`true`,
   );
 
   if (key.startDate) {
@@ -77,6 +92,26 @@ export async function findMatchingJob(db: Dbx, key: MatchKey): Promise<Job | nul
     .where(and(nameMatch, inArray(jobs.status, [...OPEN])))
     .limit(2);
   return open.length === 1 ? open[0] : null;
+}
+
+/**
+ * The one job an expense on `day` belongs to: a live job within two days
+ * either side (flights go out the day before and back the day after).
+ * Two candidates is ambiguous, so neither is picked.
+ */
+export async function jobNear(db: Dbx, day: string): Promise<Job | null> {
+  const rows = await db
+    .select()
+    .from(jobs)
+    .where(
+      and(
+        ne(jobs.status, "cancelled"),
+        sql`${jobs.startDate} <= ${day}::date + 2`,
+        sql`coalesce(${jobs.endDate}, ${jobs.startDate}) >= ${day}::date - 2`,
+      ),
+    )
+    .limit(2);
+  return rows.length === 1 ? rows[0] : null;
 }
 
 function jobValues(x: NonNullable<Extraction["job"]>): Partial<NewJob> {
@@ -243,6 +278,49 @@ export async function applyExtraction(
       travelRows.push(row);
     }
 
+    // Expenses: only what the talent paid. Agency- or client-paid travel is
+    // already in the travel rows above and costs the talent nothing.
+    const expenseRows: Expense[] = [];
+    for (const e of x.expenses) {
+      if (e.paid_by === "agency" || e.paid_by === "client") continue;
+      if (e.reference) {
+        const [dup] = await tx
+          .select()
+          .from(expenses)
+          .where(and(eq(expenses.kind, e.kind), eq(expenses.reference, e.reference)))
+          .limit(1);
+        if (dup) {
+          expenseRows.push(dup);
+          continue;
+        }
+      }
+      const owner = job ?? (e.date ? await jobNear(tx, e.date) : null);
+      const why = [
+        e.paid_by === "unknown" && "who paid is unclear",
+        !owner && "no matching job",
+        !e.date && "date missing",
+        !e.currency && !owner?.currency && "currency missing",
+      ].filter((w): w is string => !!w);
+      const [row] = await tx
+        .insert(expenses)
+        .values({
+          jobId: owner?.id ?? null,
+          kind: e.kind,
+          description: e.description,
+          amount: String(e.amount),
+          currency: e.currency ?? owner?.currency ?? null,
+          incurredOn: e.date ?? email.receivedAt.toISOString().slice(0, 10),
+          reimbursable: e.reimbursable ?? false,
+          reference: e.reference,
+          needsReview: why.length > 0,
+          reviewReason: why.length ? why.join("; ") : null,
+          sourceEmailId: email.id,
+          createdAt: now,
+        })
+        .returning();
+      expenseRows.push(row);
+    }
+
     // Invoice: created on confirmation, updated by payment mail.
     let invoice: Invoice | null = job ? await ensureInvoice(tx, job) : null;
     if (x.payment && job) {
@@ -285,7 +363,7 @@ export async function applyExtraction(
       });
     }
 
-    return { job, created, changes, travel: travelRows, invoice, reviewReasons: reasons };
+    return { job, created, changes, travel: travelRows, invoice, expenses: expenseRows, reviewReasons: reasons };
   });
 }
 

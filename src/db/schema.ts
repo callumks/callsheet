@@ -18,6 +18,7 @@ export const emailClass = pgEnum("email_class", [
   "update",
   "travel",
   "payment",
+  "expense",
   "irrelevant",
 ]);
 
@@ -37,6 +38,8 @@ export const invoiceStatus = pgEnum("invoice_status", [
   "invoiced",
   "paid",
 ]);
+
+export const expenseKind = pgEnum("expense_kind", ["flight", "hotel", "transport", "food", "kit", "other"]);
 
 export const reminderKind = pgEnum("reminder_kind", [
   "new_booking",
@@ -131,6 +134,26 @@ export const invoices = pgTable("invoices", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+// Money the talent paid out. Only their own spend is stored: travel the
+// agency or client paid for lives in `travel` alone. job_id is optional;
+// an expense with no job waits in review until it is linked or dismissed.
+export const expenses = pgTable("expenses", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  jobId: uuid("job_id").references(() => jobs.id, { onDelete: "set null" }),
+  kind: expenseKind("kind").notNull(),
+  description: text("description"),
+  amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
+  currency: text("currency"),
+  incurredOn: date("incurred_on").notNull(),
+  reimbursable: boolean("reimbursable").notNull().default(false),
+  reimbursedAt: timestamp("reimbursed_at", { withTimezone: true }),
+  reference: text("reference"),
+  needsReview: boolean("needs_review").notNull().default(false),
+  reviewReason: text("review_reason"),
+  sourceEmailId: uuid("source_email_id").references(() => emails.id),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 // Scheduled pushes. send_at is absolute; it was computed in the job's zone.
 export const reminders = pgTable("reminders", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -160,6 +183,8 @@ export type NewJob = typeof jobs.$inferInsert;
 export type Travel = typeof travel.$inferSelect;
 export type NewTravel = typeof travel.$inferInsert;
 export type Invoice = typeof invoices.$inferSelect;
+export type Expense = typeof expenses.$inferSelect;
+export type NewExpense = typeof expenses.$inferInsert;
 export type Reminder = typeof reminders.$inferSelect;
 export type NewReminder = typeof reminders.$inferInsert;
 export type PushSubscription = typeof pushSubscriptions.$inferSelect;

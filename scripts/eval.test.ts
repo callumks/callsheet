@@ -43,7 +43,7 @@ describe("fixtures", () => {
 
   it("covers every label", () => {
     const labels = new Set(set.map((s) => s.expected.label));
-    expect([...labels].sort()).toEqual(["irrelevant", "new_booking", "payment", "travel", "update"]);
+    expect([...labels].sort()).toEqual(["expense", "irrelevant", "new_booking", "payment", "travel", "update"]);
   });
 });
 

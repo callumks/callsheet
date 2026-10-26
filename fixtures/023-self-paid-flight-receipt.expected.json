@@ -1,0 +1,32 @@
+{
+  "label": "expense",
+  "extraction": {
+    "job": null,
+    "travel": [
+      {
+        "kind": "flight",
+        "from": "London Heathrow (LHR)",
+        "to": "Berlin Brandenburg (BER)",
+        "depart_at": "2026-11-05T14:50:00.000Z",
+        "arrive_at": "2026-11-05T16:45:00.000Z",
+        "reference": "R4TN8W"
+      }
+    ],
+    "payment": null,
+    "expenses": [
+      {
+        "kind": "flight",
+        "description": "LHR → BER, NW 982",
+        "amount": 186.6,
+        "currency": "GBP",
+        "date": "2026-11-05",
+        "paid_by": "talent",
+        "reimbursable": null,
+        "reference": "R4TN8W"
+      }
+    ],
+    "changes": [],
+    "confidence": 0.9,
+    "uncertain_fields": []
+  }
+}

@@ -20,6 +20,7 @@
     },
     "travel": [],
     "payment": null,
+    "expenses": [],
     "changes": ["status option_1 → cancelled (released)"],
     "confidence": 0.9,
     "uncertain_fields": []

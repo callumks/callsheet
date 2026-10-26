@@ -11,6 +11,7 @@
       "due_at": "2026-12-05",
       "paid_at": null
     },
+    "expenses": [],
     "changes": [],
     "confidence": 0.9,
     "uncertain_fields": []

@@ -1,12 +1,14 @@
 import { notFound } from "next/navigation";
 import { Group, Row } from "@/components/group";
 import { BedIcon, BellIcon, CarIcon, MailIcon, PinIcon, PlaneIcon } from "@/components/icons";
+import { ExpenseRow } from "@/components/expense-row";
 import { BackBar } from "@/components/page-header";
 import { StatusDot } from "@/components/status-dot";
 import { STATUS_LABEL, formatDay, formatMoney, formatRange, formatTime, jobName } from "@/lib/format";
 import { gmailUrl } from "@/lib/gmail";
 import { invoiceView, jobDetail } from "@/lib/queries";
 import { setInvoiceAmount, updateJobField, type EditableField } from "./actions";
+import { AddExpense } from "./add-expense";
 import { InlineField } from "./inline-field";
 import { InvoiceActions } from "./invoice-actions";
 import { ReviewBanner } from "./review-banner";
@@ -49,7 +51,8 @@ export default async function JobPage({ params }: PageProps<"/jobs/[id]">) {
   const { id } = await params;
   const d = await jobDetail(id);
   if (!d) notFound();
-  const { job, travel, invoice, reminders, source } = d;
+  const { job, travel, invoice, reminders, source, expenses } = d;
+  const spent = expenses.reduce((n, e) => n + Number(e.amount), 0);
   const view = invoiceView(invoice);
   const billable = job.status === "confirmed" || job.status === "wrapped" || !!invoice;
 
@@ -144,6 +147,16 @@ export default async function JobPage({ params }: PageProps<"/jobs/[id]">) {
           })}
         </Group>
       )}
+
+      <Group
+        title={spent ? `Expenses · ${formatMoney(spent, job.currency)}` : "Expenses"}
+        footer={expenses.length ? "Tap an expense to mark it paid back or remove it." : undefined}
+      >
+        {expenses.map((e) => (
+          <ExpenseRow key={e.id} expense={e} currency={job.currency} mode="manage" />
+        ))}
+        <AddExpense jobId={job.id} />
+      </Group>
 
       <Group title="Details">
         <InlineField label="Status" value={job.status} display={STATUS_LABEL[job.status]} type="select" options={statusOptions} onSave={save("status")} />

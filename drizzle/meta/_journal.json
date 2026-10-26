@@ -15,6 +15,13 @@
       "when": 1792767597663,
       "tag": "0001_young_morg",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793053807635,
+      "tag": "0002_overjoyed_the_renegades",
+      "breakpoints": true
     }
   ]
 }

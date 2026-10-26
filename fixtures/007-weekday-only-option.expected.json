@@ -20,6 +20,7 @@
     },
     "travel": [],
     "payment": null,
+    "expenses": [],
     "changes": [],
     "confidence": 0.8,
     "uncertain_fields": ["start_date"]

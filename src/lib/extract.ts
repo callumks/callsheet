@@ -48,10 +48,22 @@ export const ExtractedPaymentSchema = z.object({
   paid_at: nstr.describe("YYYY-MM-DD"),
 });
 
+export const ExtractedExpenseSchema = z.object({
+  kind: z.enum(["flight", "hotel", "transport", "food", "kit", "other"]),
+  description: nstr.describe("Short, e.g. 'LHR → JFK, BA 117' or 'Hotel, 2 nights'"),
+  amount: z.number().nullable().describe("Total charged, number only"),
+  currency: nstr.describe("ISO 4217"),
+  date: nstr.describe("YYYY-MM-DD of the travel or purchase; for a flight, the departure date"),
+  paid_by: z.enum(["talent", "agency", "client", "unknown"]),
+  reimbursable: z.boolean().nullable().describe("true when the email says the talent will be paid back"),
+  reference: nstr.describe("Booking reference, PNR or order number"),
+});
+
 export const ExtractionSchema = z.object({
   job: ExtractedJobSchema.nullable(),
   travel: z.array(ExtractedTravelSchema),
   payment: ExtractedPaymentSchema.nullable(),
+  expenses: z.array(ExtractedExpenseSchema),
   changes: z.array(z.string()).describe("For updates: each change in words, e.g. 'call time 07:00 → 08:30'"),
   confidence: z.number().min(0).max(1),
   uncertain_fields: z.array(z.string()).describe("Field names you were not sure about or had to infer"),
@@ -68,7 +80,9 @@ Rules
 - currency is the ISO code. £ → GBP, $ → USD unless the email says otherwise, € → EUR.
 - status: "option_1" for a first option/pencil/hold, "option_2" for a second, "confirmed" when booked, "cancelled" when cancelled or released. Null if unclear.
 - timezone is the IANA zone of the location when the location makes it obvious (London → Europe/London, New York → America/New_York). Otherwise null.
-- job is null when the email has no job in it (pure travel or payment mail). payment is null unless money is being invoiced, chased or paid.
+- job is null when the email has no job in it (pure travel, payment or expense mail). payment is null unless money owed to the talent is being invoiced, chased or paid.
+- expenses lists each cost with a price on it: a flight, hotel, train, taxi or kit. paid_by is "talent" when the receipt or charge is to the talent, "agency" or "client" when the email says they booked or are covering it, "unknown" when the email does not say. Never guess paid_by. Costs with no price are not expenses.
+- An itinerary for a flight or hotel goes in travel as well as in expenses.
 - For an update email, fill job with the fields as they now stand and describe each change in changes.
 - confidence is your overall confidence that the extraction is right, 0 to 1.`;
 
@@ -95,6 +109,7 @@ export async function extract(
       job: null,
       travel: [],
       payment: null,
+      expenses: [],
       changes: [],
       confidence: 0,
       uncertain_fields: [],
@@ -183,7 +198,19 @@ export function normalise(x: Extraction): Extraction {
     paid_at: check("payment.paid_at", x.payment.paid_at, validDate(x.payment.paid_at)),
   };
 
-  return { ...x, job, travel, payment, uncertain_fields: [...uncertain] };
+  // An expense with no usable amount is dropped: there is nothing to add up.
+  const expenses = x.expenses.flatMap((e, i) => {
+    if (e.amount === null || !(e.amount > 0)) return [];
+    return [
+      {
+        ...e,
+        currency: check(`expenses[${i}].currency`, e.currency, validCurrency(e.currency)),
+        date: check(`expenses[${i}].date`, e.date, validDate(e.date)),
+      },
+    ];
+  });
+
+  return { ...x, job, travel, payment, expenses, uncertain_fields: [...uncertain] };
 }
 
 /** The fields a job must have before it can run without review. */
@@ -198,6 +225,7 @@ export function reviewReasons(x: Extraction, threshold = 0.7): string[] {
     }
     if (!x.job.timezone) reasons.push("timezone missing");
   }
-  for (const f of x.uncertain_fields) reasons.push(`${f} uncertain`);
+  // Expense doubts are reviewed on the expense, not the job.
+  for (const f of x.uncertain_fields) if (!f.startsWith("expenses[")) reasons.push(`${f} uncertain`);
   return [...new Set(reasons)];
 }

@@ -5,7 +5,7 @@ import "./env";
 
 import { sql } from "drizzle-orm";
 import { db } from "../src/db";
-import { emails, invoices, jobs, travel, type NewJob } from "../src/db/schema";
+import { emails, expenses, invoices, jobs, travel, type NewExpense, type NewJob } from "../src/db/schema";
 import { eachDay } from "../src/lib/format";
 import { syncReminders } from "../src/lib/reminders";
 
@@ -17,6 +17,7 @@ type Seed = Omit<NewJob, "status"> & {
   status: NonNullable<NewJob["status"]>;
   invoice?: "to_invoice" | "invoiced" | "paid" | "overdue";
   travel?: { kind: "flight" | "hotel" | "car"; from?: string; to?: string; depart: Date; reference: string }[];
+  spend?: Omit<NewExpense, "currency" | "incurredOn">[];
 };
 
 const seeds: Seed[] = [
@@ -29,8 +30,10 @@ const seeds: Seed[] = [
   { client: "Fable Knitwear", agency: "North Agency", booker: "Tom Reilly", jobType: "e-commerce", status: "confirmed", startDate: day(16), endDate: day(16), callTime: "10:00", wrapTime: "16:00", location: "Loft 4, Peckham", timezone: "Europe/London", dayRate: "800", currency: "GBP" },
   { client: "Studio Vale", agency: "Select Talent", booker: "Priya Nair", jobType: "fitting", status: "confirmed", startDate: day(24), endDate: day(24), callTime: "14:00", location: "Vale HQ, Soho", timezone: "Europe/London", dayRate: "250", currency: "GBP" },
   // Past
-  { client: "Northbound", agency: "North Agency", booker: "Jo Halvorsen", jobType: "e-commerce", status: "wrapped", startDate: day(-6), endDate: day(-6), callTime: "07:30", location: "Studio Halden", timezone: "Europe/London", dayRate: "1200", currency: "GBP", invoice: "to_invoice" },
-  { client: "Cove Swim", agency: "Select Talent", booker: "Priya Nair", jobType: "campaign", status: "wrapped", startDate: day(-19), endDate: day(-18), callTime: "06:00", location: "Camber Sands", timezone: "Europe/London", dayRate: "1800", currency: "GBP", invoice: "invoiced" },
+  { client: "Northbound", agency: "North Agency", booker: "Jo Halvorsen", jobType: "e-commerce", status: "wrapped", startDate: day(-6), endDate: day(-6), callTime: "07:30", location: "Studio Halden", timezone: "Europe/London", dayRate: "1200", currency: "GBP", invoice: "to_invoice",
+    spend: [{ kind: "transport", description: "Taxi to Studio Halden", amount: "38" }] },
+  { client: "Cove Swim", agency: "Select Talent", booker: "Priya Nair", jobType: "campaign", status: "wrapped", startDate: day(-19), endDate: day(-18), callTime: "06:00", location: "Camber Sands", timezone: "Europe/London", dayRate: "1800", currency: "GBP", invoice: "invoiced",
+    spend: [{ kind: "transport", description: "Train to Rye, return", amount: "46.20", reimbursable: true }, { kind: "hotel", description: "Mermaid Inn, 1 night", amount: "145" }] },
   { client: "Atlas Denim", agency: "North Agency", booker: "Tom Reilly", jobType: "lookbook", status: "wrapped", startDate: day(-41), endDate: day(-41), callTime: "09:00", location: "Studio 2, Shoreditch", timezone: "Europe/London", dayRate: "950", currency: "GBP", invoice: "overdue" },
   { client: "Meridian Eyewear", agency: "North Agency", booker: "Jo Halvorsen", jobType: "e-commerce", status: "wrapped", startDate: day(-55), endDate: day(-55), callTime: "08:00", location: "Pier 59, New York", timezone: "America/New_York", dayRate: "2200", currency: "USD", invoice: "paid" },
   { client: "Halden & Co", agency: "Select Talent", booker: "Priya Nair", jobType: "campaign", status: "wrapped", startDate: day(-70), endDate: day(-68), callTime: "08:00", location: "Big Sky Studios", timezone: "Europe/London", dayRate: "1400", currency: "GBP", invoice: "paid" },
@@ -42,11 +45,11 @@ const seeds: Seed[] = [
 
 async function main() {
   if (process.argv.includes("--reset")) {
-    await db.execute(sql`TRUNCATE reminders, invoices, travel, jobs, emails RESTART IDENTITY CASCADE`);
+    await db.execute(sql`TRUNCATE reminders, invoices, expenses, travel, jobs, emails RESTART IDENTITY CASCADE`);
   }
   let n = 0;
   for (const s of seeds) {
-    const { invoice, travel: trips, ...jobFields } = s;
+    const { invoice, travel: trips, spend, ...jobFields } = s;
     const [email] = await db
       .insert(emails)
       .values({
@@ -79,8 +82,22 @@ async function main() {
     for (const t of trips ?? []) {
       await db.insert(travel).values({ jobId: job.id, kind: t.kind, from: t.from, to: t.to, departAt: t.depart, reference: t.reference, threadId: email.threadId, sourceEmailId: email.id });
     }
+    for (const e of spend ?? []) {
+      await db.insert(expenses).values({ ...e, jobId: job.id, currency: job.currency, incurredOn: job.startDate! });
+    }
     await syncReminders(db, job, { invoiced: !!invoice && invoice !== "to_invoice" });
   }
+  // A receipt the sync could not place.
+  await db.insert(expenses).values({
+    kind: "flight",
+    description: "LHR → BER, NW 982",
+    amount: "186.60",
+    currency: "GBP",
+    incurredOn: day(-2),
+    reference: "R4TN8W",
+    needsReview: true,
+    reviewReason: "no matching job",
+  });
   console.log(`seeded ${seeds.length} jobs`);
   process.exit(0);
 }

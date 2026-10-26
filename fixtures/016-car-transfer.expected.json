@@ -13,6 +13,7 @@
       }
     ],
     "payment": null,
+    "expenses": [],
     "changes": [],
     "confidence": 0.85,
     "uncertain_fields": []

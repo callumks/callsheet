@@ -20,6 +20,7 @@
     },
     "travel": [],
     "payment": null,
+    "expenses": [],
     "changes": [],
     "confidence": 0.75,
     "uncertain_fields": ["day_rate"]

@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import { db } from "@/db";
-import { invoices, jobs, reminders, travel } from "@/db/schema";
+import { expenses, invoices, jobs, reminders, travel } from "@/db/schema";
 import type { Extraction } from "./extract";
 import { insertEmail, resetDb } from "@/test/db";
 import { applyExtraction, findMatchingJob, wrapFinishedJobs } from "./upsert";
@@ -28,6 +28,7 @@ const booking: Extraction = {
   },
   travel: [],
   payment: null,
+  expenses: [],
   changes: [],
   confidence: 0.95,
   uncertain_fields: [],
@@ -185,6 +186,83 @@ describe("applyExtraction", () => {
 describe("findMatchingJob", () => {
   it("returns null without names or thread", async () => {
     expect(await findMatchingJob(db, { threadId: "none", agency: null, client: null, startDate: null, endDate: null })).toBeNull();
+  });
+
+  it("ignores punctuation, case and company suffixes in names", async () => {
+    const e = await insertEmail({ threadId: "t-a" });
+    const { job } = await applyExtraction({
+      email: e,
+      label: "new_booking",
+      extraction: { ...booking, job: { ...booking.job!, client: "Lululemon Athletica Canada, Inc.", agency: "Next Management" } },
+      now: NOW,
+    });
+    const found = await findMatchingJob(db, {
+      threadId: "t-other",
+      agency: "NEXT management",
+      client: "Lululemon Athletica Canada Inc",
+      startDate: "2027-03-15",
+      endDate: "2027-03-16",
+    });
+    expect(found?.id).toBe(job!.id);
+    const other = await findMatchingJob(db, {
+      threadId: "t-other",
+      agency: "Next Management",
+      client: "Lululemon Athletica",
+      startDate: "2027-03-15",
+      endDate: "2027-03-16",
+    });
+    expect(other).toBeNull();
+  });
+});
+
+describe("expenses", () => {
+  const flight: Extraction["expenses"][number] = {
+    kind: "flight",
+    description: "LHR → BER",
+    amount: 186.6,
+    currency: "GBP",
+    date: "2027-03-14",
+    paid_by: "talent",
+    reimbursable: null,
+    reference: "R4TN8W",
+  };
+  const receipt = (over: Partial<typeof flight> = {}): Extraction => ({ ...booking, job: null, expenses: [{ ...flight, ...over }] });
+
+  it("links a receipt on its own thread to the job it sits next to", async () => {
+    const e1 = await insertEmail({ threadId: "t-a" });
+    const { job } = await applyExtraction({ email: e1, label: "new_booking", extraction: booking, now: NOW });
+    const e2 = await insertEmail({ threadId: "t-air", from: "e-ticket@air.example" });
+    const r = await applyExtraction({ email: e2, label: "expense", extraction: receipt(), now: NOW });
+    expect(r.expenses).toHaveLength(1);
+    expect(r.expenses[0]).toMatchObject({ jobId: job!.id, amount: "186.60", currency: "GBP", incurredOn: "2027-03-14", needsReview: false });
+
+    // The same booking reference from a second email is not counted twice.
+    const e3 = await insertEmail({ threadId: "t-air-2" });
+    await applyExtraction({ email: e3, label: "expense", extraction: receipt(), now: NOW });
+    expect(await db.select().from(expenses)).toHaveLength(1);
+  });
+
+  it("skips travel the agency or client paid for", async () => {
+    const e = await insertEmail();
+    const r = await applyExtraction({ email: e, label: "travel", extraction: receipt({ paid_by: "agency" }), now: NOW });
+    expect(r.expenses).toEqual([]);
+    expect(await db.select().from(expenses)).toHaveLength(0);
+  });
+
+  it("holds an expense for review when the payer or the job is unclear", async () => {
+    const e = await insertEmail();
+    const r = await applyExtraction({ email: e, label: "expense", extraction: receipt({ paid_by: "unknown", reference: null }), now: NOW });
+    expect(r.expenses[0]).toMatchObject({ jobId: null, needsReview: true, reviewReason: "who paid is unclear; no matching job" });
+  });
+
+  it("will not guess between two jobs near the same date", async () => {
+    const e1 = await insertEmail({ threadId: "t-a" });
+    await applyExtraction({ email: e1, label: "new_booking", extraction: booking, now: NOW });
+    const e2 = await insertEmail({ threadId: "t-b" });
+    await applyExtraction({ email: e2, label: "new_booking", extraction: { ...booking, job: { ...booking.job!, client: "Halden Co" } }, now: NOW });
+    const e3 = await insertEmail({ threadId: "t-air" });
+    const r = await applyExtraction({ email: e3, label: "expense", extraction: receipt(), now: NOW });
+    expect(r.expenses[0]).toMatchObject({ jobId: null, needsReview: true, reviewReason: "no matching job" });
   });
 });
 

@@ -20,6 +20,7 @@
     },
     "travel": [],
     "payment": null,
+    "expenses": [],
     "changes": ["location Eastside Studios, 12 W 21st St → Harbor Loft, 55 Water St, Brooklyn"],
     "confidence": 0.85,
     "uncertain_fields": []

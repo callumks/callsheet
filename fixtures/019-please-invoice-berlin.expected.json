@@ -11,6 +11,7 @@
       "due_at": null,
       "paid_at": null
     },
+    "expenses": [],
     "changes": [],
     "confidence": 0.9,
     "uncertain_fields": []

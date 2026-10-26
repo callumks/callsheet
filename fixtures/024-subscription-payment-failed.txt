@@ -1,0 +1,17 @@
+From: Fetchly <billing@fetchly.example>
+Subject: $99.00 payment to Fetchly was unsuccessful again
+Date: 2026-10-30T18:20:00Z
+Thread: t-024
+
+Hi Callum,
+
+We tried to charge your card ending 4417 for your Fetchly Standard plan, but the payment was declined again.
+
+Amount due: $99.00
+Invoice number: FL-2026-10-8812
+
+Please update your payment method within 7 days to avoid your account being downgraded.
+
+Update payment method: https://fetchly.example/billing
+
+Fetchly
