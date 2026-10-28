@@ -1,9 +1,9 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { SESSION_COOKIE, verifySession } from "@/lib/session";
 
-// Public: sign-in, the OAuth routes, the push service worker and PWA assets.
-// Cron routes check CRON_SECRET themselves.
-const PUBLIC = [/^\/sign-in$/, /^\/api\/auth\//, /^\/api\/cron\//, /^\/sw\.js$/, /^\/manifest\.webmanifest$/];
+// Public: sign-in, the landing and privacy pages, the OAuth routes, the push
+// service worker and PWA assets. Cron routes check CRON_SECRET themselves.
+const PUBLIC = [/^\/sign-in$/, /^\/welcome$/, /^\/privacy$/, /^\/api\/auth\//, /^\/api\/cron\//, /^\/sw\.js$/, /^\/manifest\.webmanifest$/];
 
 export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
@@ -17,6 +17,9 @@ export async function proxy(req: NextRequest) {
 
   const session = await verifySession(req.cookies.get(SESSION_COOKIE)?.value);
   if (session) return NextResponse.next();
+
+  // Signed-out visitors to the home page get the landing page at the same URL.
+  if (pathname === "/") return NextResponse.rewrite(new URL("/welcome", req.url));
 
   if (pathname.startsWith("/api/")) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
