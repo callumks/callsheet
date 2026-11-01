@@ -20,7 +20,7 @@ pnpm seed:demo --reset   # optional: fake jobs to look at
 pnpm dev
 ```
 
-Open `http://localhost:3000/sign-in` and sign in with the allow-listed Google account. Pull down on Upcoming, or tap the sync line, to run the first sync.
+Open `http://localhost:3000/sign-in` and sign in with an allow-listed Google account. Sign-in asks only for your email address; if you're on `GMAIL_EMAILS`, Google then asks for read-only Gmail access. Pull down on Upcoming, or tap the sync line, to run the first sync.
 
 ## Environment
 
@@ -29,7 +29,8 @@ Open `http://localhost:3000/sign-in` and sign in with the allow-listed Google ac
 | `DATABASE_URL` | Postgres connection string. |
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | OAuth client of type *Web application*. Keep the consent screen in Testing with yourself as the only test user, so Google verification isn't needed. |
 | `GOOGLE_REDIRECT_URI` | `<origin>/api/auth/callback/google`. Add the same URI to the OAuth client. |
-| `ALLOWED_EMAIL` | The one Google account allowed to sign in. |
+| `ALLOWED_EMAILS` | Comma-separated emails allowed to sign in, or `*` for anyone. Falls back to the older `ALLOWED_EMAIL`. |
+| `GMAIL_EMAILS` | Comma-separated emails allowed to connect Gmail. Keep it to the consent screen's test users while the app is unverified. Falls back to `ALLOWED_EMAIL`. |
 | `SESSION_SECRET` | Signs the session cookie. `openssl rand -base64 32` |
 | `TOKEN_ENCRYPTION_KEY` | Encrypts the Gmail refresh token at rest. `pnpm keygen` |
 | `ANTHROPIC_API_KEY` | Used for classify and extract. |
@@ -40,6 +41,7 @@ Open `http://localhost:3000/sign-in` and sign in with the allow-listed Google ac
 | `INVOICE_TERMS_DAYS` | Optional. Days from invoicing to due date. Default 30. |
 | `DEFAULT_TIMEZONE` | Optional. Used when a job has no zone. Default `Europe/London`. |
 | `AGENT_TOKEN` | Optional. Bearer token for the phase 2 tool API. |
+| `AGENT_EMAIL` | Optional. Whose data the bearer token reads. Falls back to `ALLOWED_EMAIL`. |
 
 ## Tests
 

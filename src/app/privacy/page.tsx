@@ -4,7 +4,7 @@ import Link from "next/link";
 export const metadata: Metadata = { title: "Privacy" };
 
 const REPO = "https://github.com/callumks/callsheet";
-const UPDATED = "28 October 2026";
+const UPDATED = "31 October 2026";
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -26,14 +26,15 @@ export default function PrivacyPage() {
 
       <Section title="Who can use it">
         <p>
-          Callsheet is a personal app. Sign-in is restricted to a single allow-listed Google account, and nobody else&rsquo;s data is collected.
+          Sign-in is by invitation: only Google accounts on the allow-list can get in. Each person&rsquo;s bookings, earnings and settings are kept
+          apart and are visible only to them.
         </p>
       </Section>
 
       <Section title="What it reads from Google">
         <p>
-          Callsheet asks for your email address and read-only access to Gmail (the <code className="num">gmail.readonly</code> scope). It cannot send,
-          delete, label or change any email.
+          Signing in asks Google for your email address only. Connecting Gmail, a separate step, asks for read-only access (the{" "}
+          <code className="num">gmail.readonly</code> scope). It cannot send, delete, label or change any email.
         </p>
         <p>
           Every 15 minutes it fetches messages that arrived since the last run. It reads the headers to skip obvious noise, and reads the body of the

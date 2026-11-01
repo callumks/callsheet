@@ -37,7 +37,7 @@ export function payloadFor(r: Reminder): PushPayload {
   return { title: r.title, body: r.body, url: r.url, tag: r.jobId ? `${r.kind}:${r.jobId}` : r.kind };
 }
 
-/** Sends every reminder whose time has come, to every subscribed device. */
+/** Sends every reminder whose time has come, to each of its owner's devices. */
 export async function sendDueReminders(
   opts: { db?: Db; now?: Date; send?: Sender; staleAfterMs?: number } = {},
 ): Promise<{ sent: number; skippedStale: number; devices: number; removed: number; failed: number }> {
@@ -63,9 +63,10 @@ export async function sendDueReminders(
       out.skippedStale++;
       continue;
     }
-    if (!subs.length) continue; // keep it queued until a device subscribes
+    const mine = subs.filter((s) => s.userId === r.userId);
+    if (!mine.length) continue; // keep it queued until a device subscribes
     let delivered = false;
-    for (const s of subs) {
+    for (const s of mine) {
       if (gone.has(s.id)) continue;
       try {
         const res = await send(s, payloadFor(r));

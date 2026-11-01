@@ -47,6 +47,7 @@ export function planReminders(job: Job, opts: PlanOpts = {}): NewReminder[] {
   for (const day of eachDay(job.startDate, job.endDate)) {
     const call = job.callTime ? formatTime(job.callTime) : null;
     out.push({
+      userId: job.userId,
       jobId: job.id,
       kind: "night_before",
       sendAt: localInstant(addDays(day, -1), "20:00", tz),
@@ -56,6 +57,7 @@ export function planReminders(job: Job, opts: PlanOpts = {}): NewReminder[] {
     });
     if (call) {
       out.push({
+        userId: job.userId,
         jobId: job.id,
         kind: "call_time",
         sendAt: new Date(localInstant(day, call, tz).getTime() - 2 * 3_600_000),
@@ -69,6 +71,7 @@ export function planReminders(job: Job, opts: PlanOpts = {}): NewReminder[] {
   if (!opts.invoiced) {
     const end = job.endDate ?? job.startDate;
     out.push({
+      userId: job.userId,
       jobId: job.id,
       kind: "invoice_due",
       sendAt: localInstant(addDays(end, 1), "10:00", tz),
@@ -100,6 +103,7 @@ export function newBookingReminder(job: Job, now = new Date()): NewReminder {
   const lead =
     job.status === "confirmed" ? "Booked" : job.status === "option_2" ? "2nd option" : job.status === "option_1" ? "1st option" : "New";
   return {
+    userId: job.userId,
     jobId: job.id,
     kind: "new_booking",
     sendAt: now,
@@ -139,6 +143,7 @@ export function describeChange(c: Change): string {
 
 export function jobChangedReminder(job: Job, changes: Change[], now = new Date()): NewReminder {
   return {
+    userId: job.userId,
     jobId: job.id,
     kind: "job_changed",
     sendAt: now,

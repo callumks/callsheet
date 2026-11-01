@@ -10,12 +10,14 @@ function secret(): Uint8Array {
   return new TextEncoder().encode(s);
 }
 
-export type Session = { email: string };
+export type Session = { userId: string; email: string };
 
-export async function signSession(email: string): Promise<string> {
-  return new SignJWT({})
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export async function signSession(s: Session): Promise<string> {
+  return new SignJWT({ email: s.email })
     .setProtectedHeader({ alg: "HS256" })
-    .setSubject(email)
+    .setSubject(s.userId)
     .setIssuedAt()
     .setExpirationTime(`${MAX_AGE}s`)
     .sign(secret());
@@ -25,18 +27,32 @@ export async function verifySession(token: string | undefined): Promise<Session 
   if (!token) return null;
   try {
     const { payload } = await jwtVerify(token, secret(), { algorithms: ["HS256"] });
-    if (typeof payload.sub !== "string") return null;
-    if (!isAllowed(payload.sub)) return null;
-    return { email: payload.sub };
+    // Sessions from before there were users carry an email as the subject: sign in again.
+    if (typeof payload.sub !== "string" || !UUID.test(payload.sub)) return null;
+    if (typeof payload.email !== "string" || !isAllowed(payload.email)) return null;
+    return { userId: payload.sub, email: payload.email };
   } catch {
     return null;
   }
 }
 
-/** Allow-list of one. */
+/** A comma-separated list of emails; `*` lets anyone in. */
+function inList(raw: string | undefined, email: string): boolean {
+  const list = (raw ?? "").split(",").map((e) => e.trim().toLowerCase()).filter(Boolean);
+  return list.includes("*") || list.includes(email.trim().toLowerCase());
+}
+
+/** Who may sign in. ALLOWED_EMAIL is the older single-address form. */
 export function isAllowed(email: string): boolean {
-  const allowed = process.env.ALLOWED_EMAIL?.trim().toLowerCase();
-  return !!allowed && email.trim().toLowerCase() === allowed;
+  return inList(process.env.ALLOWED_EMAILS ?? process.env.ALLOWED_EMAIL, email);
+}
+
+/**
+ * Who may connect Gmail. While the Google app is unverified, only its test
+ * users can grant gmail.readonly, so this list should match them.
+ */
+export function canConnectGmail(email: string): boolean {
+  return inList(process.env.GMAIL_EMAILS ?? process.env.ALLOWED_EMAIL, email);
 }
 
 export async function getSession(): Promise<Session | null> {

@@ -1,20 +1,16 @@
-import { desc, eq } from "drizzle-orm";
-import { db } from "@/db";
-import { jobs } from "@/db/schema";
 import { ExpenseRow } from "@/components/expense-row";
 import { Group } from "@/components/group";
 import { JobList } from "@/components/job-row";
 import { BackBar, PageHeader } from "@/components/page-header";
-import { expensesForReview } from "@/lib/queries";
+import { expensesForReview, jobsForReview } from "@/lib/queries";
+import { requireSession } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Needs review" };
 
 export default async function ReviewPage() {
-  const [rows, spend] = await Promise.all([
-    db.select().from(jobs).where(eq(jobs.needsReview, true)).orderBy(desc(jobs.updatedAt)),
-    expensesForReview(),
-  ]);
+  const { userId } = await requireSession();
+  const [rows, spend] = await Promise.all([jobsForReview(userId), expensesForReview(userId)]);
   return (
     <section>
       <BackBar href="/" label="Upcoming" />

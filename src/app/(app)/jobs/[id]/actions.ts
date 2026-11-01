@@ -1,6 +1,6 @@
 "use server";
 
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/db";
@@ -53,8 +53,14 @@ function coerce(field: EditableField, raw: string): { ok: true; value: string | 
   }
 }
 
-async function resync(jobId: string) {
-  const [job] = await db.select().from(jobs).where(eq(jobs.id, jobId)).limit(1);
+/** The job, if it belongs to the signed-in user. */
+async function ownJob(userId: string, jobId: string) {
+  const [job] = await db.select().from(jobs).where(and(eq(jobs.userId, userId), eq(jobs.id, jobId))).limit(1);
+  return job ?? null;
+}
+
+async function resync(userId: string, jobId: string) {
+  const job = await ownJob(userId, jobId);
   if (!job) return;
   const [inv] = await db.select().from(invoices).where(eq(invoices.jobId, jobId)).limit(1);
   const trips = await db.select().from(travel).where(eq(travel.jobId, jobId));
@@ -69,34 +75,38 @@ function touch(jobId: string | null) {
 }
 
 export async function updateJobField(jobId: string, field: EditableField, raw: string): Promise<{ error?: string }> {
-  await requireSession();
+  const { userId } = await requireSession();
+  const job = await ownJob(userId, jobId);
+  if (!job) return { error: "Job not found" };
   const f = Field.parse(field);
   const c = coerce(f, raw);
   if (!c.ok) return { error: c.error };
   const patch: Record<string, string | null | Date> = { [f]: c.value, updatedAt: new Date() };
   if (f === "status" && c.value === null) return { error: "Status is required" };
   if (f === "startDate" && c.value) {
-    const [j] = await db.select({ endDate: jobs.endDate }).from(jobs).where(eq(jobs.id, jobId));
-    if (!j?.endDate || j.endDate < c.value) patch.endDate = c.value;
+    if (!job.endDate || job.endDate < c.value) patch.endDate = c.value;
   }
   await db.update(jobs).set(patch).where(eq(jobs.id, jobId));
-  await resync(jobId);
+  await resync(userId, jobId);
   touch(jobId);
   return {};
 }
 
 export async function clearReview(jobId: string) {
-  await requireSession();
-  await db.update(jobs).set({ needsReview: false, reviewReason: null, updatedAt: new Date() }).where(eq(jobs.id, jobId));
+  const { userId } = await requireSession();
+  await db
+    .update(jobs)
+    .set({ needsReview: false, reviewReason: null, updatedAt: new Date() })
+    .where(and(eq(jobs.userId, userId), eq(jobs.id, jobId)));
   touch(jobId);
 }
 
 const TERMS_DAYS = Number(process.env.INVOICE_TERMS_DAYS ?? 30);
 
 export async function setInvoiceStatus(jobId: string, status: "to_invoice" | "invoiced" | "paid") {
-  await requireSession();
+  const { userId } = await requireSession();
   const now = new Date();
-  const [job] = await db.select().from(jobs).where(eq(jobs.id, jobId)).limit(1);
+  const job = await ownJob(userId, jobId);
   if (!job) return;
   const [inv] = await db.select().from(invoices).where(eq(invoices.jobId, jobId)).limit(1);
   const set = {
@@ -113,26 +123,25 @@ export async function setInvoiceStatus(jobId: string, status: "to_invoice" | "in
   if (inv) {
     await db.update(invoices).set(set).where(eq(invoices.id, inv.id));
   } else {
-    await db.insert(invoices).values({ jobId, amount: job.dayRate, currency: job.currency, ...set });
+    await db.insert(invoices).values({ userId, jobId, amount: job.dayRate, currency: job.currency, ...set });
   }
   // Paid or invoiced: no more nudges for this job.
   if (status !== "to_invoice") {
     await db.delete(reminders).where(eq(reminders.jobId, jobId));
   }
-  await resync(jobId);
+  await resync(userId, jobId);
   touch(jobId);
 }
 
 export async function setInvoiceAmount(jobId: string, raw: string): Promise<{ error?: string }> {
-  await requireSession();
+  const { userId } = await requireSession();
   const n = Number(raw.replace(/[^0-9.]/g, ""));
   if (!Number.isFinite(n) || n < 0) return { error: "Not a number" };
+  const job = await ownJob(userId, jobId);
+  if (!job) return { error: "Job not found" };
   const [inv] = await db.select().from(invoices).where(eq(invoices.jobId, jobId)).limit(1);
   if (inv) await db.update(invoices).set({ amount: String(n) }).where(eq(invoices.id, inv.id));
-  else {
-    const [job] = await db.select().from(jobs).where(eq(jobs.id, jobId)).limit(1);
-    if (job) await db.insert(invoices).values({ jobId, amount: String(n), currency: job.currency });
-  }
+  else await db.insert(invoices).values({ userId, jobId, amount: String(n), currency: job.currency });
   touch(jobId);
   return {};
 }
@@ -147,13 +156,14 @@ const ExpenseInput = z.object({
 });
 
 export async function addExpense(jobId: string, input: z.infer<typeof ExpenseInput>): Promise<{ error?: string }> {
-  await requireSession();
+  const { userId } = await requireSession();
   const x = ExpenseInput.parse(input);
   const n = Number(x.amount.replace(/[^0-9.]/g, ""));
   if (!x.amount.trim() || !Number.isFinite(n) || n <= 0) return { error: "Enter an amount" };
-  const [job] = await db.select().from(jobs).where(eq(jobs.id, jobId)).limit(1);
+  const job = await ownJob(userId, jobId);
   if (!job) return { error: "Job not found" };
   await db.insert(expenses).values({
+    userId,
     jobId,
     kind: x.kind,
     description: x.description || null,
@@ -166,28 +176,32 @@ export async function addExpense(jobId: string, input: z.infer<typeof ExpenseInp
   return {};
 }
 
-async function expenseJob(id: string): Promise<string | null> {
-  const [e] = await db.select({ jobId: expenses.jobId }).from(expenses).where(eq(expenses.id, id)).limit(1);
-  return e?.jobId ?? null;
-}
+const ownExpense = (userId: string, id: string) => and(eq(expenses.userId, userId), eq(expenses.id, id));
 
 export async function setExpenseReimbursed(id: string, done: boolean) {
-  await requireSession();
-  await db.update(expenses).set({ reimbursedAt: done ? new Date() : null }).where(eq(expenses.id, id));
-  touch(await expenseJob(id));
+  const { userId } = await requireSession();
+  const [e] = await db
+    .update(expenses)
+    .set({ reimbursedAt: done ? new Date() : null })
+    .where(ownExpense(userId, id))
+    .returning({ jobId: expenses.jobId });
+  touch(e?.jobId ?? null);
 }
 
 /** Review: the expense is right as it stands. */
 export async function keepExpense(id: string) {
-  await requireSession();
-  await db.update(expenses).set({ needsReview: false, reviewReason: null }).where(eq(expenses.id, id));
-  touch(await expenseJob(id));
+  const { userId } = await requireSession();
+  const [e] = await db
+    .update(expenses)
+    .set({ needsReview: false, reviewReason: null })
+    .where(ownExpense(userId, id))
+    .returning({ jobId: expenses.jobId });
+  touch(e?.jobId ?? null);
 }
 
 /** Not a work cost, or entered by mistake. */
 export async function deleteExpense(id: string) {
-  await requireSession();
-  const jobId = await expenseJob(id);
-  await db.delete(expenses).where(eq(expenses.id, id));
-  touch(jobId);
+  const { userId } = await requireSession();
+  const [e] = await db.delete(expenses).where(ownExpense(userId, id)).returning({ jobId: expenses.jobId });
+  touch(e?.jobId ?? null);
 }

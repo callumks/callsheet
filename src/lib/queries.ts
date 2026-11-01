@@ -1,5 +1,5 @@
-// Read side for the three screens. Plain Drizzle, no caching: one user,
-// small tables, and the data must be live after a sync.
+// Read side for the three screens. Plain Drizzle, no caching: small tables,
+// and the data must be live after a sync. Every read is scoped to one user.
 
 import { and, asc, desc, eq, gte, inArray, isNotNull, isNull, lte, ne, or, sql } from "drizzle-orm";
 import { db } from "@/db";
@@ -19,7 +19,7 @@ export function invoiceView(inv: Invoice | null | undefined, now = new Date()): 
   return inv.status;
 }
 
-export async function upcoming(day = today()) {
+export async function upcoming(userId: string, day = today()) {
   const horizon = addDays(day, 14);
   const rows = await db
     .select({ job: jobs, invoice: invoices })
@@ -27,6 +27,7 @@ export async function upcoming(day = today()) {
     .leftJoin(invoices, eq(invoices.jobId, jobs.id))
     .where(
       and(
+        eq(jobs.userId, userId),
         ne(jobs.status, "cancelled"),
         or(gte(jobs.endDate, day), and(isNotNull(jobs.startDate), gte(jobs.startDate, day))),
       ),
@@ -39,14 +40,14 @@ export async function upcoming(day = today()) {
   const undated = await db
     .select()
     .from(jobs)
-    .where(and(ne(jobs.status, "cancelled"), sql`${jobs.startDate} is null`))
+    .where(and(eq(jobs.userId, userId), ne(jobs.status, "cancelled"), sql`${jobs.startDate} is null`))
     .orderBy(desc(jobs.updatedAt));
   return { next, list, later, undated };
 }
 
-export async function jobDetail(id: string) {
+export async function jobDetail(userId: string, id: string) {
   if (!/^[0-9a-f-]{36}$/i.test(id)) return null;
-  const [job] = await db.select().from(jobs).where(eq(jobs.id, id)).limit(1);
+  const [job] = await db.select().from(jobs).where(and(eq(jobs.userId, userId), eq(jobs.id, id))).limit(1);
   if (!job) return null;
   const [trips, [invoice], rems, source, spent] = await Promise.all([
     db.select().from(travel).where(eq(travel.jobId, id)).orderBy(asc(travel.departAt)),
@@ -60,22 +61,39 @@ export async function jobDetail(id: string) {
   return { job, travel: trips, invoice: invoice ?? null, reminders: rems, source, expenses: spent };
 }
 
-export async function needsReviewCount() {
+export async function needsReviewCount(userId: string) {
   const [[{ n }], [{ e }]] = await Promise.all([
-    db.select({ n: sql<number>`count(*)::int` }).from(jobs).where(eq(jobs.needsReview, true)),
-    db.select({ e: sql<number>`count(*)::int` }).from(expenses).where(eq(expenses.needsReview, true)),
+    db.select({ n: sql<number>`count(*)::int` }).from(jobs).where(and(eq(jobs.userId, userId), eq(jobs.needsReview, true))),
+    db
+      .select({ e: sql<number>`count(*)::int` })
+      .from(expenses)
+      .where(and(eq(expenses.userId, userId), eq(expenses.needsReview, true))),
   ]);
   return n + e;
 }
 
-export async function expensesForReview() {
-  return db.select().from(expenses).where(eq(expenses.needsReview, true)).orderBy(desc(expenses.incurredOn));
+export async function expensesForReview(userId: string) {
+  return db
+    .select()
+    .from(expenses)
+    .where(and(eq(expenses.userId, userId), eq(expenses.needsReview, true)))
+    .orderBy(desc(expenses.incurredOn));
 }
 
-export async function syncState() {
+export async function jobsForReview(userId: string) {
+  return db
+    .select()
+    .from(jobs)
+    .where(and(eq(jobs.userId, userId), eq(jobs.needsReview, true)))
+    .orderBy(desc(jobs.updatedAt));
+}
+
+/** The user's connected inbox, or null when Gmail isn't connected. */
+export async function syncState(userId: string) {
   const [acct] = await db
-    .select({ email: googleAccounts.email, lastSyncedAt: googleAccounts.lastSyncedAt })
+    .select({ email: googleAccounts.email, lastSyncedAt: googleAccounts.lastSyncedAt, needsReconnect: googleAccounts.needsReconnect })
     .from(googleAccounts)
+    .where(eq(googleAccounts.userId, userId))
     .limit(1);
   return acct ?? null;
 }
@@ -116,7 +134,7 @@ function monthLabel(key: string) {
   return MONTHS[Number(key.slice(5, 7)) - 1];
 }
 
-export async function earnings(day = today(), now = new Date()): Promise<EarningsView> {
+export async function earnings(userId: string, day = today(), now = new Date()): Promise<EarningsView> {
   // Six months back, inclusive of this one.
   const [y, m] = day.split("-").map(Number);
   const start = new Date(Date.UTC(y, m - 6, 1)).toISOString().slice(0, 10);
@@ -126,7 +144,14 @@ export async function earnings(day = today(), now = new Date()): Promise<Earning
     .select({ job: jobs, invoice: invoices })
     .from(invoices)
     .innerJoin(jobs, eq(jobs.id, invoices.jobId))
-    .where(and(inArray(jobs.status, ["confirmed", "wrapped", "cancelled"]), isNotNull(jobs.startDate), gte(jobs.startDate, start)))
+    .where(
+      and(
+        eq(jobs.userId, userId),
+        inArray(jobs.status, ["confirmed", "wrapped", "cancelled"]),
+        isNotNull(jobs.startDate),
+        gte(jobs.startDate, start),
+      ),
+    )
     .orderBy(asc(jobs.startDate));
 
   // Pick the currency with the most money in it; others are listed, not converted.
@@ -177,7 +202,7 @@ export async function earnings(day = today(), now = new Date()): Promise<Earning
     .select({ expense: expenses, job: jobs })
     .from(expenses)
     .leftJoin(jobs, eq(jobs.id, expenses.jobId))
-    .where(or(isNull(expenses.currency), eq(expenses.currency, currency)))
+    .where(and(eq(expenses.userId, userId), or(isNull(expenses.currency), eq(expenses.currency, currency))))
     .orderBy(desc(expenses.incurredOn));
   let owedBack = 0;
   const spent: EarningsView["spent"] = [];

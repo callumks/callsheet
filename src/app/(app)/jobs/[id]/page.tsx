@@ -7,6 +7,7 @@ import { StatusDot } from "@/components/status-dot";
 import { STATUS_LABEL, formatDay, formatMoney, formatRange, formatTime, jobName } from "@/lib/format";
 import { gmailUrl } from "@/lib/gmail";
 import { invoiceView, jobDetail } from "@/lib/queries";
+import { requireSession } from "@/lib/session";
 import { setInvoiceAmount, updateJobField, type EditableField } from "./actions";
 import { AddExpense } from "./add-expense";
 import { InlineField } from "./inline-field";
@@ -17,7 +18,7 @@ export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: PageProps<"/jobs/[id]">) {
   const { id } = await params;
-  const d = await jobDetail(id);
+  const d = await jobDetail((await requireSession()).userId, id);
   return { title: d ? jobName(d.job) : "Job" };
 }
 
@@ -49,7 +50,7 @@ function short(d: Date, tz: string | null) {
 
 export default async function JobPage({ params }: PageProps<"/jobs/[id]">) {
   const { id } = await params;
-  const d = await jobDetail(id);
+  const d = await jobDetail((await requireSession()).userId, id);
   if (!d) notFound();
   const { job, travel, invoice, reminders, source, expenses } = d;
   const spent = expenses.reduce((n, e) => n + Number(e.amount), 0);

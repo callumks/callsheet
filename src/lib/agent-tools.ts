@@ -1,5 +1,5 @@
-// Phase 2 tool surface. Read-only over the database; the agent never touches
-// Gmail and never writes. draft_invoice_chase returns text for me to send.
+// Phase 2 tool surface. Read-only over one user's data; the agent never
+// touches Gmail and never writes. draft_invoice_chase returns text to send.
 
 import { and, asc, eq, gte, inArray, isNotNull, lte } from "drizzle-orm";
 import { z } from "zod";
@@ -50,8 +50,9 @@ function invoiceSummary(inv: Invoice | null, now: Date) {
   };
 }
 
-export async function runTool(name: ToolName, rawArgs: unknown, opts: { db?: Dbx; now?: Date } = {}) {
+export async function runTool(name: ToolName, rawArgs: unknown, opts: { userId: string; db?: Dbx; now?: Date }) {
   const db = opts.db ?? defaultDb;
+  const mine = eq(jobs.userId, opts.userId);
   const now = opts.now ?? new Date();
   const today = now.toISOString().slice(0, 10);
 
@@ -61,13 +62,13 @@ export async function runTool(name: ToolName, rawArgs: unknown, opts: { db?: Dbx
       const rows = await db
         .select()
         .from(jobs)
-        .where(and(lte(jobs.startDate, a.to), gte(jobs.endDate, a.from)))
+        .where(and(mine, lte(jobs.startDate, a.to), gte(jobs.endDate, a.from)))
         .orderBy(asc(jobs.startDate), asc(jobs.callTime));
       return { jobs: rows.map(jobSummary) };
     }
     case "get_job": {
       const a = toolSchemas.get_job.parse(rawArgs);
-      const [job] = await db.select().from(jobs).where(eq(jobs.id, a.id));
+      const [job] = await db.select().from(jobs).where(and(mine, eq(jobs.id, a.id)));
       if (!job) return { error: "not found" };
       const [inv] = await db.select().from(invoices).where(eq(invoices.jobId, job.id));
       const trips = await db.select().from(travel).where(eq(travel.jobId, job.id)).orderBy(asc(travel.departAt));
@@ -83,7 +84,7 @@ export async function runTool(name: ToolName, rawArgs: unknown, opts: { db?: Dbx
         .select({ job: jobs, invoice: invoices })
         .from(invoices)
         .innerJoin(jobs, eq(jobs.id, invoices.jobId))
-        .where(and(isNotNull(jobs.startDate), gte(jobs.startDate, a.from), lte(jobs.startDate, a.to)));
+        .where(and(mine, isNotNull(jobs.startDate), gte(jobs.startDate, a.from), lte(jobs.startDate, a.to)));
       const totals: Record<string, { total: number; paid: number; invoiced: number; to_invoice: number; overdue: number; jobs: number; days: number }> = {};
       for (const { job, invoice } of rows) {
         if (job.status === "cancelled" && invoice.status === "to_invoice") continue;
@@ -105,7 +106,14 @@ export async function runTool(name: ToolName, rawArgs: unknown, opts: { db?: Dbx
         .select({ job: jobs, invoice: invoices })
         .from(invoices)
         .innerJoin(jobs, eq(jobs.id, invoices.jobId))
-        .where(and(inArray(invoices.status, ["to_invoice", "invoiced"]), inArray(jobs.status, ["confirmed", "wrapped"]), lte(jobs.startDate, today)))
+        .where(
+          and(
+            mine,
+            inArray(invoices.status, ["to_invoice", "invoiced"]),
+            inArray(jobs.status, ["confirmed", "wrapped"]),
+            lte(jobs.startDate, today),
+          ),
+        )
         .orderBy(asc(jobs.startDate));
       return { unpaid: rows.map(({ job, invoice }) => ({ ...jobSummary(job), invoice: invoiceSummary(invoice, now) })) };
     }
@@ -115,7 +123,7 @@ export async function runTool(name: ToolName, rawArgs: unknown, opts: { db?: Dbx
         .select({ job: jobs, invoice: invoices })
         .from(jobs)
         .leftJoin(invoices, eq(invoices.jobId, jobs.id))
-        .where(eq(jobs.id, a.job_id));
+        .where(and(mine, eq(jobs.id, a.job_id)));
       if (!row) return { error: "not found" };
       return { draft: draftChase(row.job, row.invoice, now), note: "Draft only. Nothing was sent." };
     }

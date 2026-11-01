@@ -4,6 +4,7 @@ import { addDays, localInstant, planReminders } from "./reminders";
 
 const job: Job = {
   id: "00000000-0000-0000-0000-000000000001",
+  userId: "00000000-0000-0000-0000-0000000000aa",
   client: "Northbound",
   agency: "North",
   booker: null,

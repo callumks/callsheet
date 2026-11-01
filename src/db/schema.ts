@@ -8,6 +8,7 @@ import {
   text,
   time,
   timestamp,
+  unique,
   uuid,
 } from "drizzle-orm/pg-core";
 
@@ -52,35 +53,56 @@ export const reminderKind = pgEnum("reminder_kind", [
 
 // Tables --------------------------------------------------------------------
 
-// The one Google account the app reads. Refresh token is AES-256-GCM
-// encrypted with TOKEN_ENCRYPTION_KEY; the plaintext never touches the DB.
+// One row per person who has signed in. Every other table belongs to a user.
+export const users = pgTable("users", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  email: text("email").notNull().unique(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+const owner = () =>
+  uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" });
+
+// The Gmail account a user has connected, at most one each. Refresh token is
+// AES-256-GCM encrypted with TOKEN_ENCRYPTION_KEY; the plaintext never touches the DB.
 export const googleAccounts = pgTable("google_accounts", {
   id: uuid("id").primaryKey().defaultRandom(),
+  userId: owner().unique(),
   email: text("email").notNull().unique(),
   refreshTokenEnc: text("refresh_token_enc").notNull(),
   lastHistoryId: text("last_history_id"),
   lastSyncedAt: timestamp("last_synced_at", { withTimezone: true }),
+  // Google revoked the refresh token (Testing-mode apps do this every 7 days).
+  needsReconnect: boolean("needs_reconnect").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 // Raw metadata only. The body is fetched on demand and never stored.
-export const emails = pgTable("emails", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  gmailId: text("gmail_id").notNull().unique(),
-  threadId: text("thread_id").notNull(),
-  from: text("from").notNull(),
-  subject: text("subject").notNull(),
-  receivedAt: timestamp("received_at", { withTimezone: true }).notNull(),
-  classifiedAs: emailClass("classified_as"),
-  processedAt: timestamp("processed_at", { withTimezone: true }),
-  error: text("error"),
-  // Failed runs so far. Unprocessed emails are retried until this hits the cap.
-  failures: integer("failures").notNull().default(0),
-});
+export const emails = pgTable(
+  "emails",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: owner(),
+    gmailId: text("gmail_id").notNull(),
+    threadId: text("thread_id").notNull(),
+    from: text("from").notNull(),
+    subject: text("subject").notNull(),
+    receivedAt: timestamp("received_at", { withTimezone: true }).notNull(),
+    classifiedAs: emailClass("classified_as"),
+    processedAt: timestamp("processed_at", { withTimezone: true }),
+    error: text("error"),
+    // Failed runs so far. Unprocessed emails are retried until this hits the cap.
+    failures: integer("failures").notNull().default(0),
+  },
+  (t) => [unique("emails_user_gmail_id").on(t.userId, t.gmailId)],
+);
 
 // A multi-day job is one row with a date range.
 export const jobs = pgTable("jobs", {
   id: uuid("id").primaryKey().defaultRandom(),
+  userId: owner(),
   client: text("client"),
   agency: text("agency"),
   booker: text("booker"),
@@ -107,6 +129,7 @@ export const jobs = pgTable("jobs", {
 // job_id is optional; a trip can stand alone.
 export const travel = pgTable("travel", {
   id: uuid("id").primaryKey().defaultRandom(),
+  userId: owner(),
   jobId: uuid("job_id").references(() => jobs.id, { onDelete: "set null" }),
   kind: travelKind("kind").notNull(),
   from: text("from"),
@@ -121,6 +144,7 @@ export const travel = pgTable("travel", {
 
 export const invoices = pgTable("invoices", {
   id: uuid("id").primaryKey().defaultRandom(),
+  userId: owner(),
   jobId: uuid("job_id")
     .notNull()
     .references(() => jobs.id, { onDelete: "cascade" }),
@@ -139,6 +163,7 @@ export const invoices = pgTable("invoices", {
 // an expense with no job waits in review until it is linked or dismissed.
 export const expenses = pgTable("expenses", {
   id: uuid("id").primaryKey().defaultRandom(),
+  userId: owner(),
   jobId: uuid("job_id").references(() => jobs.id, { onDelete: "set null" }),
   kind: expenseKind("kind").notNull(),
   description: text("description"),
@@ -157,6 +182,7 @@ export const expenses = pgTable("expenses", {
 // Scheduled pushes. send_at is absolute; it was computed in the job's zone.
 export const reminders = pgTable("reminders", {
   id: uuid("id").primaryKey().defaultRandom(),
+  userId: owner(),
   jobId: uuid("job_id").references(() => jobs.id, { onDelete: "cascade" }),
   kind: reminderKind("kind").notNull(),
   sendAt: timestamp("send_at", { withTimezone: true }).notNull(),
@@ -169,6 +195,7 @@ export const reminders = pgTable("reminders", {
 
 export const pushSubscriptions = pgTable("push_subscriptions", {
   id: uuid("id").primaryKey().defaultRandom(),
+  userId: owner(),
   endpoint: text("endpoint").notNull().unique(),
   p256dh: text("p256dh").notNull(),
   auth: text("auth").notNull(),
@@ -176,6 +203,7 @@ export const pushSubscriptions = pgTable("push_subscriptions", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+export type User = typeof users.$inferSelect;
 export type GoogleAccount = typeof googleAccounts.$inferSelect;
 export type Email = typeof emails.$inferSelect;
 export type Job = typeof jobs.$inferSelect;

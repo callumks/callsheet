@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/page-header";
 import { PushToggle } from "@/components/push-toggle";
 import { formatMoney, formatRange, jobName } from "@/lib/format";
 import { earnings, syncState } from "@/lib/queries";
+import { canConnectGmail, requireSession } from "@/lib/session";
 import { MarkPaid } from "./mark-paid";
 
 export const dynamic = "force-dynamic";
@@ -17,7 +18,9 @@ const MONTH_NAME: Record<string, string> = {
 };
 
 export default async function EarningsPage() {
-  const [e, sync] = await Promise.all([earnings(), syncState()]);
+  const session = await requireSession();
+  const [e, sync] = await Promise.all([earnings(session.userId), syncState(session.userId)]);
+  const gmailAction = canConnectGmail(session.email) && (!sync || sync.needsReconnect) ? (sync ? "Reconnect" : "Connect") : null;
   const m = e.month;
   const owed = e.unpaid.reduce((n, u) => n + Number(u.invoice.amount ?? 0), 0);
   const stats = [
@@ -124,7 +127,20 @@ export default async function EarningsPage() {
         <div className="flex items-center justify-between gap-4 px-4 py-3.5">
           <div className="min-w-0">
             <div>Gmail</div>
-            <div className="mt-0.5 truncate text-sm text-ink-3">{sync?.email ?? "Not connected"}</div>
+            <div className={`mt-0.5 truncate text-sm ${sync?.needsReconnect ? "text-accent" : "text-ink-3"}`}>
+              {sync ? (sync.needsReconnect ? `${sync.email} · access expired` : sync.email) : "Not connected"}
+            </div>
+          </div>
+          {gmailAction && (
+            <a href="/api/auth/google?connect=gmail" className="press flex h-8 shrink-0 items-center rounded-full bg-ink px-3 text-xs font-medium text-ground">
+              {gmailAction}
+            </a>
+          )}
+        </div>
+        <div className="flex items-center justify-between gap-4 px-4 py-3.5">
+          <div className="min-w-0">
+            <div>Signed in</div>
+            <div className="mt-0.5 truncate text-sm text-ink-3">{session.email}</div>
           </div>
           <form action="/api/auth/signout" method="post">
             <button type="submit" className="press h-8 rounded-full bg-ground px-3 text-xs font-medium">Sign out</button>

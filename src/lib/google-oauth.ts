@@ -1,10 +1,10 @@
-// Google OAuth with the gmail.readonly scope only. Plain fetch; no googleapis.
+// Google OAuth. Sign-in asks for the email address only; connecting Gmail
+// adds the gmail.readonly scope on top. Plain fetch; no googleapis.
 
-export const SCOPES = [
-  "openid",
-  "email",
-  "https://www.googleapis.com/auth/gmail.readonly",
-] as const;
+export const SIGN_IN_SCOPES = ["openid", "email"] as const;
+export const GMAIL_SCOPES = [...SIGN_IN_SCOPES, "https://www.googleapis.com/auth/gmail.readonly"] as const;
+
+export type AuthMode = "sign-in" | "gmail";
 
 function env(name: string): string {
   const v = process.env[name];
@@ -12,15 +12,20 @@ function env(name: string): string {
   return v;
 }
 
-export function authUrl(state: string): string {
+export function authUrl(state: string, mode: AuthMode = "sign-in", loginHint?: string): string {
   const u = new URL("https://accounts.google.com/o/oauth2/v2/auth");
   u.searchParams.set("client_id", env("GOOGLE_CLIENT_ID"));
   u.searchParams.set("redirect_uri", env("GOOGLE_REDIRECT_URI"));
   u.searchParams.set("response_type", "code");
-  u.searchParams.set("scope", SCOPES.join(" "));
-  u.searchParams.set("access_type", "offline");
-  u.searchParams.set("prompt", "consent"); // always returns a refresh token
+  u.searchParams.set("scope", (mode === "gmail" ? GMAIL_SCOPES : SIGN_IN_SCOPES).join(" "));
   u.searchParams.set("include_granted_scopes", "true");
+  if (mode === "gmail") {
+    u.searchParams.set("access_type", "offline");
+    u.searchParams.set("prompt", "consent"); // always returns a refresh token
+  } else {
+    u.searchParams.set("prompt", "select_account");
+  }
+  if (loginHint) u.searchParams.set("login_hint", loginHint);
   u.searchParams.set("state", state);
   return u.toString();
 }

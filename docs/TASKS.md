@@ -34,6 +34,13 @@ One commit per task. Ticked when it lands on `main`.
 - [x] 19 Demo seed: `pnpm seed:demo` fills the DB with fake jobs for screenshots
 - [x] 20 README: architecture, setup, screenshots, status
 
+## Beyond v1
+
+- [x] 22 More than one user: users table, user_id on every row, sign-in separate from connecting Gmail, every read and write scoped to the signed-in user, reconnect prompt when Google revokes access
+- [ ] 23 Statement checking: read agency statements, check deductions and commission against each job
+- [ ] 24 Email in without Gmail review: a personal forwarding address per user, plus an upload page
+- [ ] 25 Payouts (optional add-on)
+
 ## Phase 2 (not in v1)
 
 - [x] 21 Tool API over the database: list_jobs, get_job, earnings, unpaid, draft_invoice_chase

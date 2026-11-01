@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { db } from "@/db";
 import { expenses, invoices, jobs, reminders, travel } from "@/db/schema";
 import type { Extraction } from "./extract";
-import { insertEmail, resetDb } from "@/test/db";
+import { TEST_USER, insertEmail, insertUser, resetDb } from "@/test/db";
 import { applyExtraction, findMatchingJob, wrapFinishedJobs } from "./upsert";
 
 const NOW = new Date("2027-03-01T10:00:00Z");
@@ -184,8 +184,19 @@ describe("applyExtraction", () => {
 });
 
 describe("findMatchingJob", () => {
+  it("never matches another user's job, even on the same thread and names", async () => {
+    const e = await insertEmail({ threadId: "t-shared" });
+    await applyExtraction({ email: e, label: "new_booking", extraction: booking, now: NOW });
+    const other = await insertUser("sam@example.com");
+    const theirs = await insertEmail({ userId: other.id, threadId: "t-shared" });
+    const r = await applyExtraction({ email: theirs, label: "new_booking", extraction: booking, now: NOW });
+    expect(r.created).toBe(true);
+    expect(r.job?.userId).toBe(other.id);
+    expect(r.invoice?.userId).toBe(other.id);
+  });
+
   it("returns null without names or thread", async () => {
-    expect(await findMatchingJob(db, { threadId: "none", agency: null, client: null, startDate: null, endDate: null })).toBeNull();
+    expect(await findMatchingJob(db, { userId: TEST_USER, threadId: "none", agency: null, client: null, startDate: null, endDate: null })).toBeNull();
   });
 
   it("ignores punctuation, case and company suffixes in names", async () => {
@@ -197,6 +208,7 @@ describe("findMatchingJob", () => {
       now: NOW,
     });
     const found = await findMatchingJob(db, {
+      userId: TEST_USER,
       threadId: "t-other",
       agency: "NEXT management",
       client: "Lululemon Athletica Canada Inc",
@@ -205,6 +217,7 @@ describe("findMatchingJob", () => {
     });
     expect(found?.id).toBe(job!.id);
     const other = await findMatchingJob(db, {
+      userId: TEST_USER,
       threadId: "t-other",
       agency: "Next Management",
       client: "Lululemon Athletica",

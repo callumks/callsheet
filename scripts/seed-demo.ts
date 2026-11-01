@@ -1,11 +1,12 @@
 // Fills the database with fake jobs for screenshots and local development.
 // Usage: pnpm seed:demo [--reset]   (--reset wipes every table first)
+// The jobs belong to DEMO_EMAIL, or ALLOWED_EMAIL, created if missing.
 
-import "./env";
+import { demoEmail } from "./env";
 
 import { sql } from "drizzle-orm";
 import { db } from "../src/db";
-import { emails, expenses, invoices, jobs, travel, type NewExpense, type NewJob } from "../src/db/schema";
+import { emails, expenses, invoices, jobs, travel, users, type NewExpense, type NewJob } from "../src/db/schema";
 import { eachDay } from "../src/lib/format";
 import { syncReminders } from "../src/lib/reminders";
 
@@ -13,11 +14,11 @@ const today = new Date();
 const day = (offset: number) => new Date(today.getTime() + offset * 86_400_000).toISOString().slice(0, 10);
 const at = (offset: number, hhmm = "12:00") => new Date(`${day(offset)}T${hhmm}:00Z`);
 
-type Seed = Omit<NewJob, "status"> & {
+type Seed = Omit<NewJob, "status" | "userId"> & {
   status: NonNullable<NewJob["status"]>;
   invoice?: "to_invoice" | "invoiced" | "paid" | "overdue";
   travel?: { kind: "flight" | "hotel" | "car"; from?: string; to?: string; depart: Date; reference: string }[];
-  spend?: Omit<NewExpense, "currency" | "incurredOn">[];
+  spend?: Omit<NewExpense, "currency" | "incurredOn" | "userId">[];
 };
 
 const seeds: Seed[] = [
@@ -47,12 +48,19 @@ async function main() {
   if (process.argv.includes("--reset")) {
     await db.execute(sql`TRUNCATE reminders, invoices, expenses, travel, jobs, emails RESTART IDENTITY CASCADE`);
   }
+  const [user] = await db
+    .insert(users)
+    .values({ email: demoEmail })
+    .onConflictDoUpdate({ target: users.email, set: { email: demoEmail } })
+    .returning();
+  const userId = user.id;
   let n = 0;
   for (const s of seeds) {
     const { invoice, travel: trips, spend, ...jobFields } = s;
     const [email] = await db
       .insert(emails)
       .values({
+        userId,
         gmailId: `demo-${n++}`,
         threadId: `demo-thread-${n}`,
         from: `${s.booker} <${s.booker!.split(" ")[0].toLowerCase()}@${s.agency!.toLowerCase().replace(/[^a-z]/g, "")}.example>`,
@@ -62,7 +70,7 @@ async function main() {
         processedAt: at(-3),
       })
       .returning();
-    const [job] = await db.insert(jobs).values({ ...jobFields, sourceEmailId: email.id, threadId: email.threadId }).returning();
+    const [job] = await db.insert(jobs).values({ ...jobFields, userId, sourceEmailId: email.id, threadId: email.threadId }).returning();
 
     const days = eachDay(job.startDate!, job.endDate).length;
     const amount = String(Number(job.dayRate) * days);
@@ -70,6 +78,7 @@ async function main() {
       const status = invoice === "overdue" ? "invoiced" : (invoice ?? "to_invoice");
       const end = new Date(`${job.endDate}T12:00:00Z`);
       await db.insert(invoices).values({
+        userId,
         jobId: job.id,
         amount: job.status === "cancelled" ? String(Number(amount) / 2) : amount,
         currency: job.currency,
@@ -80,15 +89,16 @@ async function main() {
       });
     }
     for (const t of trips ?? []) {
-      await db.insert(travel).values({ jobId: job.id, kind: t.kind, from: t.from, to: t.to, departAt: t.depart, reference: t.reference, threadId: email.threadId, sourceEmailId: email.id });
+      await db.insert(travel).values({ userId, jobId: job.id, kind: t.kind, from: t.from, to: t.to, departAt: t.depart, reference: t.reference, threadId: email.threadId, sourceEmailId: email.id });
     }
     for (const e of spend ?? []) {
-      await db.insert(expenses).values({ ...e, jobId: job.id, currency: job.currency, incurredOn: job.startDate! });
+      await db.insert(expenses).values({ ...e, userId, jobId: job.id, currency: job.currency, incurredOn: job.startDate! });
     }
     await syncReminders(db, job, { invoiced: !!invoice && invoice !== "to_invoice" });
   }
   // A receipt the sync could not place.
   await db.insert(expenses).values({
+    userId,
     kind: "flight",
     description: "LHR → BER, NW 982",
     amount: "186.60",

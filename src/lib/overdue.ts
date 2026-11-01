@@ -65,7 +65,7 @@ export async function scheduleOverdue(db: Dbx = defaultDb, now = new Date()): Pr
     // Catch up after downtime: never schedule further in the past than now.
     while (at.getTime() + 7 * DAY <= now.getTime()) at = new Date(at.getTime() + 7 * DAY);
     const msg = overdueMessage(job, invoice, at);
-    await db.insert(reminders).values({ jobId: job.id, kind: "overdue", sendAt: at, url: `/jobs/${job.id}`, ...msg });
+    await db.insert(reminders).values({ userId: job.userId, jobId: job.id, kind: "overdue", sendAt: at, url: `/jobs/${job.id}`, ...msg });
     scheduled++;
   }
   return { scheduled, cleared };

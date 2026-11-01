@@ -34,6 +34,7 @@ export type ApplyResult = {
 };
 
 type MatchKey = {
+  userId: string;
   threadId: string;
   agency: string | null;
   client: string | null;
@@ -60,7 +61,7 @@ export async function findMatchingJob(db: Dbx, key: MatchKey): Promise<Job | nul
   const [byThread] = await db
     .select()
     .from(jobs)
-    .where(eq(jobs.threadId, key.threadId))
+    .where(and(eq(jobs.userId, key.userId), eq(jobs.threadId, key.threadId)))
     .orderBy(desc(jobs.updatedAt))
     .limit(1);
   if (byThread) return byThread;
@@ -69,6 +70,7 @@ export async function findMatchingJob(db: Dbx, key: MatchKey): Promise<Job | nul
 
   // 2. Same agency + client with overlapping dates.
   const nameMatch = and(
+    eq(jobs.userId, key.userId),
     key.agency ? sameName(jobs.agency, key.agency) : sql`true`,
     key.client ? sameName(jobs.client, key.client) : sql`true`,
   );
@@ -99,12 +101,13 @@ export async function findMatchingJob(db: Dbx, key: MatchKey): Promise<Job | nul
  * either side (flights go out the day before and back the day after).
  * Two candidates is ambiguous, so neither is picked.
  */
-export async function jobNear(db: Dbx, day: string): Promise<Job | null> {
+export async function jobNear(db: Dbx, userId: string, day: string): Promise<Job | null> {
   const rows = await db
     .select()
     .from(jobs)
     .where(
       and(
+        eq(jobs.userId, userId),
         ne(jobs.status, "cancelled"),
         sql`${jobs.startDate} <= ${day}::date + 2`,
         sql`coalesce(${jobs.endDate}, ${jobs.startDate}) >= ${day}::date - 2`,
@@ -182,7 +185,7 @@ async function ensureInvoice(db: Dbx, job: Job): Promise<Invoice | null> {
   const amount = job.dayRate ? String(Number(job.dayRate) * days) : null;
   const [inv] = await db
     .insert(invoices)
-    .values({ jobId: job.id, amount, currency: job.currency, status: "to_invoice" })
+    .values({ userId: job.userId, jobId: job.id, amount, currency: job.currency, status: "to_invoice" })
     .returning();
   return inv;
 }
@@ -192,6 +195,7 @@ export async function applyExtraction(
   db: Db = defaultDb,
 ): Promise<ApplyResult> {
   const { email, label, extraction: x } = input;
+  const userId = email.userId;
   const now = input.now ?? new Date();
   const reasons = reviewReasons(x);
 
@@ -201,6 +205,7 @@ export async function applyExtraction(
     let changes: Change[] = [];
 
     const key: MatchKey = {
+      userId,
       threadId: email.threadId,
       agency: x.job?.agency ?? null,
       client: x.job?.client ?? null,
@@ -230,6 +235,7 @@ export async function applyExtraction(
           .insert(jobs)
           .values({
             ...values,
+            userId,
             status: values.status ?? (label === "update" ? "confirmed" : "option_1"),
             threadId: email.threadId,
             sourceEmailId: email.id,
@@ -253,7 +259,7 @@ export async function applyExtraction(
         ? await tx
             .select()
             .from(travel)
-            .where(and(eq(travel.kind, t.kind), eq(travel.reference, t.reference)))
+            .where(and(eq(travel.userId, userId), eq(travel.kind, t.kind), eq(travel.reference, t.reference)))
             .limit(1)
         : [];
       if (dup.length) {
@@ -263,6 +269,7 @@ export async function applyExtraction(
       const [row] = await tx
         .insert(travel)
         .values({
+          userId,
           jobId: job?.id ?? null,
           kind: t.kind,
           from: t.from,
@@ -287,14 +294,14 @@ export async function applyExtraction(
         const [dup] = await tx
           .select()
           .from(expenses)
-          .where(and(eq(expenses.kind, e.kind), eq(expenses.reference, e.reference)))
+          .where(and(eq(expenses.userId, userId), eq(expenses.kind, e.kind), eq(expenses.reference, e.reference)))
           .limit(1);
         if (dup) {
           expenseRows.push(dup);
           continue;
         }
       }
-      const owner = job ?? (e.date ? await jobNear(tx, e.date) : null);
+      const owner = job ?? (e.date ? await jobNear(tx, userId, e.date) : null);
       const why = [
         e.paid_by === "unknown" && "who paid is unclear",
         !owner && "no matching job",
@@ -304,6 +311,7 @@ export async function applyExtraction(
       const [row] = await tx
         .insert(expenses)
         .values({
+          userId,
           jobId: owner?.id ?? null,
           kind: e.kind,
           description: e.description,
@@ -341,7 +349,7 @@ export async function applyExtraction(
       } else {
         [invoice] = await tx
           .insert(invoices)
-          .values({ jobId: job.id, ...set, status: set.status ?? "to_invoice", createdAt: now })
+          .values({ userId, jobId: job.id, ...set, status: set.status ?? "to_invoice", createdAt: now })
           .returning();
       }
     }
@@ -373,12 +381,16 @@ export function describeTravel(t: Travel): string {
   return [t.kind, route, when, t.reference].filter(Boolean).join(" · ");
 }
 
-/** Jobs that have wrapped but are still marked confirmed: flip them. */
-export async function wrapFinishedJobs(db: Db = defaultDb, today = new Date().toISOString().slice(0, 10)): Promise<number> {
+/** Jobs that have wrapped but are still marked confirmed: flip them. Every user's, unless one is named. */
+export async function wrapFinishedJobs(
+  db: Db = defaultDb,
+  today = new Date().toISOString().slice(0, 10),
+  userId?: string,
+): Promise<number> {
   const rows = await db
     .update(jobs)
     .set({ status: "wrapped", updatedAt: new Date() })
-    .where(and(eq(jobs.status, "confirmed"), or(lte(jobs.endDate, today), and(isNull(jobs.endDate), lte(jobs.startDate, today)))))
+    .where(and(userId ? eq(jobs.userId, userId) : undefined, eq(jobs.status, "confirmed"), or(lte(jobs.endDate, today), and(isNull(jobs.endDate), lte(jobs.startDate, today)))))
     .returning({ id: jobs.id });
   return rows.length;
 }

@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import { db } from "@/db";
 import { pushSubscriptions, reminders } from "@/db/schema";
-import { resetDb } from "@/test/db";
+import { TEST_USER, insertUser, resetDb } from "@/test/db";
 import { sendDueReminders, type PushPayload, type Sender } from "./push";
 
 const NOW = new Date("2027-03-14T20:01:00Z");
@@ -10,12 +10,12 @@ const NOW = new Date("2027-03-14T20:01:00Z");
 beforeEach(resetDb);
 
 async function addReminder(sendAt: Date, title = "Tomorrow: Northbound") {
-  const [r] = await db.insert(reminders).values({ kind: "night_before", sendAt, title, body: "Call 07:00", url: "/jobs/x" }).returning();
+  const [r] = await db.insert(reminders).values({ userId: TEST_USER, kind: "night_before", sendAt, title, body: "Call 07:00", url: "/jobs/x" }).returning();
   return r;
 }
 
-async function addSub(endpoint: string) {
-  await db.insert(pushSubscriptions).values({ endpoint, p256dh: "p", auth: "a" });
+async function addSub(endpoint: string, userId = TEST_USER) {
+  await db.insert(pushSubscriptions).values({ userId, endpoint, p256dh: "p", auth: "a" });
 }
 
 describe("sendDueReminders", () => {
@@ -37,6 +37,16 @@ describe("sendDueReminders", () => {
     expect(row.sentAt?.toISOString()).toBe(NOW.toISOString());
     // Second run sends nothing new.
     expect((await sendDueReminders({ now: NOW, send })).sent).toBe(0);
+  });
+
+  it("sends a reminder only to its owner's devices", async () => {
+    const other = await insertUser("sam@example.com");
+    await addSub("https://push.example/mine");
+    await addSub("https://push.example/theirs", other.id);
+    await addReminder(new Date("2027-03-14T20:00:00Z"));
+    const calls: string[] = [];
+    await sendDueReminders({ now: NOW, send: async (s) => (calls.push(s.endpoint), { gone: false }) });
+    expect(calls).toEqual(["https://push.example/mine"]);
   });
 
   it("drops expired subscriptions", async () => {

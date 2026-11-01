@@ -5,7 +5,7 @@ import { emails, googleAccounts, jobs } from "@/db/schema";
 import type { Extraction } from "./extract";
 import type { MessageBody, MessageMeta } from "./gmail";
 import { MAX_FAILURES, runSync } from "./pipeline";
-import { resetDb } from "@/test/db";
+import { TEST_USER, insertUser, resetDb } from "@/test/db";
 
 const NOW = new Date("2027-03-01T10:00:00Z");
 
@@ -103,12 +103,19 @@ beforeEach(async () => {
   await resetDb();
   bodiesRead.length = 0;
   process.env.AGENCY_DOMAINS = "northagency.example";
-  await db.insert(googleAccounts).values({ email: "me@example.com", refreshTokenEnc: "x", lastHistoryId: "h-100" });
+  await db.insert(googleAccounts).values({ userId: TEST_USER, email: "me@example.com", refreshTokenEnc: "x", lastHistoryId: "h-100" });
 });
+
+/** The one account's summary. */
+async function once(over: Parameters<typeof runSync>[0]) {
+  const runs = await runSync(over);
+  expect(runs).toHaveLength(1);
+  return runs[0];
+}
 
 describe("runSync", () => {
   it("runs the five steps and never reads filtered bodies", async () => {
-    const s = await runSync(fakes);
+    const s = await once(fakes);
     expect(s).toMatchObject({ fetched: 4, skipped: 0, filteredOut: 1, irrelevant: 1, applied: 1, historyId: "h-200" });
     expect(s.errors).toEqual([{ gmailId: "m4", error: "model exploded" }]);
     expect(bodiesRead.sort()).toEqual(["m1", "m3", "m4"]); // m2 stopped at the headers
@@ -128,16 +135,16 @@ describe("runSync", () => {
   });
 
   it("is idempotent across runs", async () => {
-    await runSync(fakes);
-    const s = await runSync(fakes);
+    await once(fakes);
+    const s = await once(fakes);
     expect(s.skipped).toBe(3); // m4 failed, so it is tried again
     expect(s.applied).toBe(0);
     expect(await db.select().from(jobs)).toHaveLength(1);
   });
 
   it("retries unfinished emails that history no longer lists", async () => {
-    await runSync({ ...fakes, classify: async () => Promise.reject(new Error("no api key")) });
-    const s = await runSync({ ...fakes, listNewMessageIds: async () => ({ ids: [], historyId: "h-300" }) });
+    await once({ ...fakes, classify: async () => Promise.reject(new Error("no api key")) });
+    const s = await once({ ...fakes, listNewMessageIds: async () => ({ ids: [], historyId: "h-300" }) });
     expect(s).toMatchObject({ fetched: 0, retried: 3, applied: 1, irrelevant: 1 });
     expect(s.errors).toEqual([{ gmailId: "m4", error: "model exploded" }]);
 
@@ -152,18 +159,18 @@ describe("runSync", () => {
   });
 
   it("gives up on an email after MAX_FAILURES runs", async () => {
-    for (let i = 0; i < MAX_FAILURES; i++) await runSync(fakes);
+    for (let i = 0; i < MAX_FAILURES; i++) await once(fakes);
     const [m4] = await db.select().from(emails).where(eq(emails.gmailId, "m4"));
     expect(m4.failures).toBe(MAX_FAILURES);
 
     bodiesRead.length = 0;
-    const s = await runSync(fakes);
+    const s = await once(fakes);
     expect(s.errors).toEqual([]);
     expect(bodiesRead).toEqual([]);
   });
 
   it("holds the history cursor when a message fails before it is stored", async () => {
-    const s = await runSync({
+    const s = await once({
       ...fakes,
       getMessageMeta: async (t: string, id: string) => {
         if (id === "m3") throw new Error("Gmail 403: quota");
@@ -180,8 +187,31 @@ describe("runSync", () => {
 
   it("does nothing without a connected account", async () => {
     await db.delete(googleAccounts).where(eq(googleAccounts.email, "me@example.com"));
-    const s = await runSync(fakes);
-    expect(s.account).toBeNull();
-    expect(s.fetched).toBe(0);
+    expect(await runSync(fakes)).toEqual([]);
+  });
+
+  it("keeps each user's inbox apart, and syncs just one user on request", async () => {
+    const other = await insertUser("sam@example.com");
+    await db.insert(googleAccounts).values({ userId: other.id, email: "sam@example.com", refreshTokenEnc: "x" });
+
+    // Gmail ids are per mailbox, so the same id in two inboxes is two emails.
+    const runs = await runSync(fakes);
+    expect(runs.map((r) => r.account).sort()).toEqual(["me@example.com", "sam@example.com"]);
+    expect(runs.map((r) => r.applied)).toEqual([1, 1]);
+    const owners = await db.select({ userId: jobs.userId }).from(jobs);
+    expect(owners.map((o) => o.userId).sort()).toEqual([TEST_USER, other.id].sort());
+
+    const mine = await runSync(fakes, { userId: other.id });
+    expect(mine.map((r) => r.account)).toEqual(["sam@example.com"]);
+  });
+
+  it("flags an inbox whose Google access was revoked and stops trying it", async () => {
+    const dead = { ...fakes, accessToken: async () => Promise.reject(new Error('Google token endpoint 400: {"error": "invalid_grant"}')) };
+    const s = await once(dead);
+    expect(s.errors).toEqual([{ gmailId: "", error: "Gmail access expired: reconnect" }]);
+    const [acct] = await db.select().from(googleAccounts);
+    expect(acct.needsReconnect).toBe(true);
+    expect(acct.lastHistoryId).toBe("h-100");
+    expect(await runSync(fakes)).toEqual([]);
   });
 });

@@ -1,11 +1,11 @@
 // Captures the three screens at phone size, light and dark, from a running server.
 // Usage: pnpm screenshots [baseUrl]   (default http://localhost:3000). Seed first: pnpm seed:demo --reset
-import "./env";
-import { SignJWT } from "jose";
+import { demoEmail } from "./env";
 import puppeteer from "puppeteer-core";
 import { eq } from "drizzle-orm";
 import { db } from "../src/db";
-import { jobs } from "../src/db/schema";
+import { jobs, users } from "../src/db/schema";
+import { signSession } from "../src/lib/session";
 
 const base = process.argv[2] ?? "http://localhost:3000";
 const outDir = process.env.SHOTS_DIR ?? "docs/screens";
@@ -14,12 +14,9 @@ const width = Number(process.env.SHOTS_WIDTH ?? 390);
 const chrome = process.env.CHROME_PATH ?? "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 
 async function main() {
-  const token = await new SignJWT({})
-    .setProtectedHeader({ alg: "HS256" })
-    .setSubject(process.env.ALLOWED_EMAIL!)
-    .setIssuedAt()
-    .setExpirationTime("10m")
-    .sign(new TextEncoder().encode(process.env.SESSION_SECRET!));
+  const [user] = await db.select().from(users).where(eq(users.email, demoEmail));
+  if (!user) throw new Error(`No user ${demoEmail}: run pnpm seed:demo first`);
+  const token = await signSession({ userId: user.id, email: user.email });
   const [job] = await db.select({ id: jobs.id }).from(jobs).where(eq(jobs.client, "Meridian Eyewear")).limit(1);
 
   const browser = await puppeteer.launch({ executablePath: chrome, headless: true });

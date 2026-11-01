@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import { db } from "@/db";
 import { invoices, jobs, reminders } from "@/db/schema";
-import { resetDb } from "@/test/db";
+import { TEST_USER, resetDb } from "@/test/db";
 import { nextOverdueAt, scheduleOverdue } from "./overdue";
 
 beforeEach(resetDb);
@@ -24,9 +24,9 @@ describe("nextOverdueAt", () => {
 async function setup(status: "invoiced" | "paid" | "to_invoice", dueAt: Date | null) {
   const [job] = await db
     .insert(jobs)
-    .values({ client: "Atlas Denim", status: "wrapped", startDate: "2027-03-01", endDate: "2027-03-01", timezone: "Europe/London", currency: "GBP" })
+    .values({ userId: TEST_USER, client: "Atlas Denim", status: "wrapped", startDate: "2027-03-01", endDate: "2027-03-01", timezone: "Europe/London", currency: "GBP" })
     .returning();
-  const [inv] = await db.insert(invoices).values({ jobId: job.id, amount: "950", currency: "GBP", status, dueAt }).returning();
+  const [inv] = await db.insert(invoices).values({ userId: TEST_USER, jobId: job.id, amount: "950", currency: "GBP", status, dueAt }).returning();
   return { job, inv };
 }
 

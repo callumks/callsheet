@@ -3,7 +3,7 @@
 
 import { and, eq, isNull, lt, sql } from "drizzle-orm";
 import { db as defaultDb, type Db } from "@/db";
-import { emails, googleAccounts, type Email } from "@/db/schema";
+import { emails, googleAccounts, type Email, type GoogleAccount } from "@/db/schema";
 import { classify as realClassify, type Classification } from "./classify";
 import { extract as realExtract, type Extraction } from "./extract";
 import { shouldProcess } from "./filter";
@@ -14,7 +14,7 @@ import { applyExtraction, wrapFinishedJobs } from "./upsert";
 export type PipelineDeps = {
   db: Db;
   now: () => Date;
-  accessToken: (account: typeof googleAccounts.$inferSelect) => Promise<string>;
+  accessToken: (account: GoogleAccount) => Promise<string>;
   listNewMessageIds: (token: string, lastHistoryId: string | null) => Promise<{ ids: string[]; historyId: string }>;
   getMessageMeta: (token: string, id: string) => Promise<MessageMeta>;
   getMessageBody: (token: string, id: string) => Promise<MessageBody>;
@@ -37,7 +37,7 @@ export const realDeps: PipelineDeps = {
 export const MAX_FAILURES = 5;
 
 export type SyncSummary = {
-  account: string | null;
+  account: string;
   fetched: number;
   retried: number;
   skipped: number;
@@ -50,11 +50,28 @@ export type SyncSummary = {
   ms: number;
 };
 
-export async function runSync(over: Partial<PipelineDeps> = {}): Promise<SyncSummary> {
+/** Every connected inbox, or just one user's. Accounts run one after another. */
+export async function runSync(over: Partial<PipelineDeps> = {}, opts: { userId?: string } = {}): Promise<SyncSummary[]> {
+  const d: PipelineDeps = { ...realDeps, ...over };
+  const accounts = await d.db
+    .select()
+    .from(googleAccounts)
+    .where(and(eq(googleAccounts.needsReconnect, false), opts.userId ? eq(googleAccounts.userId, opts.userId) : undefined));
+  const out: SyncSummary[] = [];
+  for (const account of accounts) out.push(await syncAccount(account, d));
+  return out;
+}
+
+/** Google said the refresh token is dead: only the user signing in again fixes it. */
+function revoked(e: unknown) {
+  return e instanceof Error && /invalid_grant/.test(e.message);
+}
+
+export async function syncAccount(account: GoogleAccount, over: Partial<PipelineDeps> = {}): Promise<SyncSummary> {
   const d: PipelineDeps = { ...realDeps, ...over };
   const started = Date.now();
   const summary: SyncSummary = {
-    account: null,
+    account: account.email,
     fetched: 0,
     retried: 0,
     skipped: 0,
@@ -67,15 +84,17 @@ export async function runSync(over: Partial<PipelineDeps> = {}): Promise<SyncSum
     ms: 0,
   };
 
-  const [account] = await d.db.select().from(googleAccounts).limit(1);
-  if (!account) {
+  // 1. Fetch
+  let token: string;
+  try {
+    token = await d.accessToken(account);
+  } catch (e) {
+    if (!revoked(e)) throw e;
+    await d.db.update(googleAccounts).set({ needsReconnect: true }).where(eq(googleAccounts.id, account.id));
+    summary.errors.push({ gmailId: "", error: "Gmail access expired: reconnect" });
     summary.ms = Date.now() - started;
     return summary;
   }
-  summary.account = account.email;
-
-  // 1. Fetch
-  const token = await d.accessToken(account);
   const { ids: newIds, historyId } = await d.listNewMessageIds(token, account.lastHistoryId);
   summary.fetched = newIds.length;
 
@@ -83,7 +102,7 @@ export async function runSync(over: Partial<PipelineDeps> = {}): Promise<SyncSum
   const unfinished = await d.db
     .select({ gmailId: emails.gmailId })
     .from(emails)
-    .where(and(isNull(emails.processedAt), lt(emails.failures, MAX_FAILURES)));
+    .where(and(eq(emails.userId, account.userId), isNull(emails.processedAt), lt(emails.failures, MAX_FAILURES)));
   const ids = [...new Set([...newIds, ...unfinished.map((u) => u.gmailId)])];
   summary.retried = ids.length - newIds.length;
 
@@ -91,7 +110,11 @@ export async function runSync(over: Partial<PipelineDeps> = {}): Promise<SyncSum
   let lost = false;
 
   for (const gmailId of ids) {
-    const [seen] = await d.db.select().from(emails).where(eq(emails.gmailId, gmailId)).limit(1);
+    const [seen] = await d.db
+      .select()
+      .from(emails)
+      .where(and(eq(emails.userId, account.userId), eq(emails.gmailId, gmailId)))
+      .limit(1);
     if (seen && (seen.processedAt || seen.failures >= MAX_FAILURES)) {
       summary.skipped++;
       continue;
@@ -104,6 +127,7 @@ export async function runSync(over: Partial<PipelineDeps> = {}): Promise<SyncSum
         [row] = await d.db
           .insert(emails)
           .values({
+            userId: account.userId,
             gmailId: meta.gmailId,
             threadId: meta.threadId,
             from: meta.from,
@@ -159,7 +183,7 @@ export async function runSync(over: Partial<PipelineDeps> = {}): Promise<SyncSum
     }
   }
 
-  summary.wrapped = await wrapFinishedJobs(d.db, d.now().toISOString().slice(0, 10));
+  summary.wrapped = await wrapFinishedJobs(d.db, d.now().toISOString().slice(0, 10), account.userId);
 
   await d.db
     .update(googleAccounts)

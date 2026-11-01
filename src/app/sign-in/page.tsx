@@ -6,7 +6,6 @@ const messages: Record<string, string> = {
   state: "That sign-in link expired. Try again.",
   exchange: "Google didn't accept the sign-in. Try again.",
   "not-allowed": "That Google account isn't on the allow-list.",
-  scope: "Callsheet needs read access to Gmail to find your bookings.",
 };
 
 function GoogleMark() {
