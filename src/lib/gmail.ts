@@ -35,14 +35,25 @@ export class GmailError extends Error {
   }
 }
 
+// Gmail's per-user quota is per minute, so a 429 clears on its own: wait and try again.
+const RATE_LIMIT_WAITS_MS = [5_000, 10_000, 20_000, 40_000, 60_000];
+
 async function gmail<T>(token: string, path: string, params?: Record<string, string | string[]>): Promise<T> {
   const u = new URL(`${API}/${path}`);
   for (const [k, v] of Object.entries(params ?? {})) {
     for (const item of Array.isArray(v) ? v : [v]) u.searchParams.append(k, item);
   }
-  const res = await fetch(u, { headers: { authorization: `Bearer ${token}` } });
-  if (!res.ok) throw new GmailError(res.status, `Gmail ${path} ${res.status}: ${await res.text()}`);
-  return (await res.json()) as T;
+  for (let attempt = 0; ; attempt++) {
+    const res = await fetch(u, { headers: { authorization: `Bearer ${token}` } });
+    if (res.ok) return (await res.json()) as T;
+    const text = await res.text();
+    const wait = RATE_LIMIT_WAITS_MS[attempt];
+    if (res.status === 429 && wait !== undefined) {
+      await new Promise((r) => setTimeout(r, wait));
+      continue;
+    }
+    throw new GmailError(res.status, `Gmail ${path} ${res.status}: ${text}`);
+  }
 }
 
 /**
@@ -99,7 +110,9 @@ export async function listNewMessageIds(
     for (const m of page.messages ?? []) ids.push(m.id);
     pageToken = page.nextPageToken;
   } while (pageToken);
-  return { ids, historyId: profile.historyId };
+  // Gmail lists newest first. Oldest first means the booking email creates the
+  // job and the call sheet that follows lands on it, not the other way round.
+  return { ids: ids.reverse(), historyId: profile.historyId };
 }
 
 type Part = {

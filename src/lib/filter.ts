@@ -30,7 +30,8 @@ export const BOOKING_WORDS = [
   "released",
 ] as const;
 
-const WORD_RE = new RegExp(`\\b(${BOOKING_WORDS.map((w) => w.replace(/ /g, "\\s*")).join("|")})\\b`, "i");
+// Plurals count too: "options", "invoices", "call sheets".
+const WORD_RE = new RegExp(`\\b(${BOOKING_WORDS.map((w) => w.replace(/ /g, "\\s*")).join("|")})s?\\b`, "i");
 
 export function agencyDomains(): string[] {
   return (process.env.AGENCY_DOMAINS ?? "")
