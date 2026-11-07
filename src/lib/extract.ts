@@ -216,16 +216,31 @@ export function normalise(x: Extraction): Extraction {
 /** The fields a job must have before it can run without review. */
 export const REQUIRED_JOB_FIELDS = ["client", "start_date", "call_time", "location", "day_rate"] as const;
 
-export function reviewReasons(x: Extraction, threshold = 0.7): string[] {
+/**
+ * The doubts a person should actually look at: who the job is for, when, and
+ * what it pays. A guessed time zone, job type or wrap time is not worth a
+ * queue entry; nor is a missing call time on a job that has already wrapped.
+ */
+const REVIEW_FIELDS = new Set(["client", "start_date", "end_date", "day_rate", "currency"]);
+
+export function worthReview(reasons: string[]): string[] {
+  return reasons.filter((r) => r.startsWith("low confidence") || REVIEW_FIELDS.has(r.replace(/ (missing|uncertain)$/, "")));
+}
+
+/** What a job looks like after this extraction has been merged into it; `x.job` when it stands alone. */
+export type JobFields = Pick<NonNullable<Extraction["job"]>, (typeof REQUIRED_JOB_FIELDS)[number] | "timezone">;
+
+export function reviewReasons(x: Extraction, threshold = 0.7, job: JobFields | null = x.job): string[] {
   const reasons: string[] = [];
   if (x.confidence < threshold) reasons.push(`low confidence (${x.confidence.toFixed(2)})`);
-  if (x.job) {
+  if (job) {
     for (const f of REQUIRED_JOB_FIELDS) {
-      if (x.job[f] === null) reasons.push(`${f} missing`);
+      if (job[f] === null) reasons.push(`${f} missing`);
     }
-    if (!x.job.timezone) reasons.push("timezone missing");
+    if (!job.timezone) reasons.push("timezone missing");
   }
-  // Expense doubts are reviewed on the expense, not the job.
-  for (const f of x.uncertain_fields) if (!f.startsWith("expenses[")) reasons.push(`${f} uncertain`);
+  // Expense doubts are reviewed on the expense, not the job. The model
+  // sometimes writes "job.status"; the prefix says nothing.
+  for (const f of x.uncertain_fields) if (!f.startsWith("expenses[")) reasons.push(`${f.replace(/^job\./, "")} uncertain`);
   return [...new Set(reasons)];
 }

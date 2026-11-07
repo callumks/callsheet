@@ -40,6 +40,9 @@ One commit per task. Ticked when it lands on `main`.
 - [ ] 23 Statement checking: read agency statements, check deductions and commission against each job
 - [ ] 24 Email in without Gmail review: a personal forwarding address per user, plus an upload page
 - [ ] 25 Payouts (optional add-on)
+- [x] 26 Matcher misses: `findMatchingJob` now matches on client + date overlap (agency only breaks ties, `end_date` coalesced), a date-less email falls back to the job that wrapped in the last 60 days, and a first sync runs oldest-first so call sheets land on the booking that preceded them. `scripts/tidy.ts` merges the duplicates an older matcher left behind
+- [ ] 28 Review queue: only who/when/how-much doubts flag a job now (`worthReview`), and reasons are re-judged against the merged job on every email. Still open: let the extractor say which fields it is sure of so "status uncertain" stops appearing on every wrapped job
+- [ ] 27 Deploy guard: the railway.json pre-deploy migration did not run for the 0003 deploy (cause unknown); run `scripts/migrate.mjs` from the start command too, and create the cron-sync and cron-reminders services, which don't exist yet
 
 ## Phase 2 (not in v1)
 

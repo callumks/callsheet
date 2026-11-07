@@ -68,7 +68,38 @@ describe("applyExtraction", () => {
       now: NOW,
     });
     expect(r.job?.needsReview).toBe(true);
-    expect(r.job?.reviewReason).toBe("call_time missing; day_rate missing");
+    // A missing call time is shown as TBC, not queued; a missing rate is money.
+    expect(r.job?.reviewReason).toBe("day_rate missing");
+  });
+
+  it("clears 'day_rate missing' once a later email supplies the rate", async () => {
+    const e1 = await insertEmail({ threadId: "t-r" });
+    const first = await applyExtraction({
+      email: e1,
+      label: "new_booking",
+      extraction: { ...booking, job: { ...booking.job!, day_rate: null } },
+      now: NOW,
+    });
+    expect(first.job?.reviewReason).toBe("day_rate missing");
+    const e2 = await insertEmail({ threadId: "t-r" });
+    const second = await applyExtraction({
+      email: e2,
+      label: "update",
+      extraction: { ...booking, job: { ...booking.job!, call_time: null } },
+      now: NOW,
+    });
+    expect(second.job?.id).toBe(first.job?.id);
+    expect(second.job?.dayRate).toBe("1200.00");
+    expect(second.job?.needsReview).toBe(false);
+    expect(second.job?.reviewReason).toBeNull();
+  });
+
+  it("queues no immediate push for an email that is old news", async () => {
+    const e = await insertEmail({ threadId: "t-old", receivedAt: new Date("2026-11-01T09:00:00Z") });
+    const r = await applyExtraction({ email: e, label: "new_booking", extraction: booking, now: NOW });
+    const kinds = (await db.select().from(reminders).where(eq(reminders.jobId, r.job!.id))).map((x) => x.kind);
+    expect(kinds).not.toContain("new_booking");
+    expect(kinds).toContain("night_before");
   });
 
   it("updates the same job on the same thread and records changes", async () => {
@@ -121,6 +152,51 @@ describe("applyExtraction", () => {
     });
     expect(second.job?.id).toBe(first.job?.id);
     expect(second.changes.map((c) => c.field).sort()).toEqual(["endDate", "location", "startDate"]);
+  });
+
+  it("matches on client and dates when the agency name differs or the end date is unknown", async () => {
+    const e1 = await insertEmail({ threadId: "t-a" });
+    const first = await applyExtraction({
+      email: e1,
+      label: "new_booking",
+      extraction: { ...booking, job: { ...booking.job!, end_date: null } },
+      now: NOW,
+    });
+    await db.update(jobs).set({ endDate: null }).where(eq(jobs.id, first.job!.id));
+    const e2 = await insertEmail({ threadId: "t-b" });
+    const second = await applyExtraction({
+      email: e2,
+      label: "update",
+      extraction: { ...booking, job: { ...booking.job!, agency: "Mother Agency Milan", start_date: "2027-03-15", end_date: "2027-03-16" } },
+      now: NOW,
+    });
+    expect(second.job?.id).toBe(first.job?.id);
+    expect(await db.select().from(jobs)).toHaveLength(1);
+  });
+
+  it("attaches a date-less email to the job that wrapped lately", async () => {
+    const e1 = await insertEmail({ threadId: "t-a" });
+    const first = await applyExtraction({ email: e1, label: "new_booking", extraction: booking, now: NOW });
+    await db.update(jobs).set({ status: "wrapped" }).where(eq(jobs.id, first.job!.id));
+    const e2 = await insertEmail({ threadId: "t-b", receivedAt: new Date("2027-03-20T09:00:00Z") });
+    const second = await applyExtraction({
+      email: e2,
+      label: "payment",
+      extraction: { ...booking, job: { ...booking.job!, status: null, start_date: null, end_date: null, call_time: null }, payment: { amount: 2400, currency: "GBP", status: "invoiced", sent_at: "2027-03-20", due_at: null, paid_at: null } },
+      now: new Date("2027-03-20T10:00:00Z"),
+    });
+    expect(second.created).toBe(false);
+    expect(second.job?.id).toBe(first.job?.id);
+    expect(second.invoice?.status).toBe("invoiced");
+    // Too long after the wrap, and it is a new job.
+    const e3 = await insertEmail({ threadId: "t-c", receivedAt: new Date("2027-07-01T09:00:00Z") });
+    const third = await applyExtraction({
+      email: e3,
+      label: "new_booking",
+      extraction: { ...booking, job: { ...booking.job!, status: null, start_date: null, end_date: null } },
+      now: new Date("2027-07-01T10:00:00Z"),
+    });
+    expect(third.created).toBe(true);
   });
 
   it("starts a new job for a different client", async () => {

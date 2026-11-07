@@ -90,7 +90,7 @@ export default async function EarningsPage() {
               <Link href={`/jobs/${job.id}`} className="press min-w-0 flex-1">
                 <div className="flex items-baseline justify-between gap-3">
                   <span className="truncate font-medium">{jobName(job)}</span>
-                  <span className="num shrink-0">{formatMoney(invoice.amount, invoice.currency ?? job.currency)}</span>
+                  <span className="num shrink-0">{formatMoney(invoice.amount, invoice.currency ?? job.currency ?? e.currency)}</span>
                 </div>
                 <div className="mt-0.5 flex items-baseline justify-between gap-3 text-sm">
                   <span className="truncate text-ink-3">{formatRange(job.startDate, job.endDate)}</span>

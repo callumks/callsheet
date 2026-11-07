@@ -1,5 +1,5 @@
 // Step 5. Matches an extraction to an existing job (thread id first, then
-// agency + client + date overlap), writes the record, and queues pushes.
+// client + date overlap), writes the record, and queues pushes.
 
 import { and, desc, eq, gte, inArray, isNull, lte, ne, or, sql, type AnyColumn, type SQL } from "drizzle-orm";
 import { db as defaultDb, type Db, type Dbx } from "@/db";
@@ -17,7 +17,7 @@ import {
   type Travel,
 } from "@/db/schema";
 import type { EmailLabel } from "./classify";
-import { type Extraction, reviewReasons } from "./extract";
+import { type Extraction, reviewReasons, worthReview } from "./extract";
 import { eachDay } from "./format";
 import { type Change, jobChangedReminder, newBookingReminder, syncReminders } from "./reminders";
 
@@ -40,9 +40,17 @@ type MatchKey = {
   client: string | null;
   startDate: string | null;
   endDate: string | null;
+  /** YYYY-MM-DD the email arrived; lets a date-less email find a job that just wrapped. */
+  receivedOn?: string;
 };
 
 const OPEN = ["option_1", "option_2", "confirmed"] as const;
+
+/** How long after a job ends that mail about it (call sheets, invoices, thanks) keeps arriving. */
+const RECENT_DAYS = 60;
+
+/** Immediate pushes are news; an email this old (a backfill, a long outage) is history. */
+const FRESH_MS = 24 * 3_600_000;
 
 /**
  * A name reduced for matching: lowercase, company suffixes and punctuation
@@ -68,32 +76,45 @@ export async function findMatchingJob(db: Dbx, key: MatchKey): Promise<Job | nul
 
   if (!key.agency && !key.client) return null;
 
-  // 2. Same agency + client with overlapping dates.
+  // 2. Same client with overlapping dates. One person is not on two jobs for
+  // the same brand on the same day, whichever agency's name is on the email
+  // (the booker's own agency and the mother agency both write), so agency
+  // only breaks ties. Without a client, the agency has to match.
   const nameMatch = and(
     eq(jobs.userId, key.userId),
-    key.agency ? sameName(jobs.agency, key.agency) : sql`true`,
-    key.client ? sameName(jobs.client, key.client) : sql`true`,
+    key.client ? sameName(jobs.client, key.client) : sameName(jobs.agency, key.agency!),
   );
+  const sameAgencyFirst = key.agency ? desc(sql`${sameName(jobs.agency, key.agency)}`) : desc(jobs.updatedAt);
+  const jobEnd = sql`coalesce(${jobs.endDate}, ${jobs.startDate})`;
 
   if (key.startDate) {
     const end = key.endDate ?? key.startDate;
     const [byOverlap] = await db
       .select()
       .from(jobs)
-      .where(and(nameMatch, lte(jobs.startDate, end), gte(jobs.endDate, key.startDate)))
-      .orderBy(desc(jobs.updatedAt))
+      .where(and(nameMatch, lte(jobs.startDate, end), gte(jobEnd, key.startDate)))
+      .orderBy(sameAgencyFirst, desc(jobs.updatedAt))
       .limit(1);
-    if (byOverlap) return byOverlap;
-    return null;
+    return byOverlap ?? null;
   }
 
-  // 3. No dates in the email: only match if there is exactly one open job for that name.
+  // 3. No dates in the email: the one open job for that name, if there is
+  // exactly one; otherwise the job that most recently wrapped, if it did so
+  // lately. An invoice or a thank-you is about the job that just happened.
   const open = await db
     .select()
     .from(jobs)
     .where(and(nameMatch, inArray(jobs.status, [...OPEN])))
     .limit(2);
-  return open.length === 1 ? open[0] : null;
+  if (open.length === 1) return open[0];
+  if (open.length > 1 || !key.receivedOn) return null;
+  const [recent] = await db
+    .select()
+    .from(jobs)
+    .where(and(nameMatch, ne(jobs.status, "cancelled"), lte(jobEnd, key.receivedOn), sql`${jobEnd} >= ${key.receivedOn}::date - ${RECENT_DAYS}::int`))
+    .orderBy(desc(jobs.startDate))
+    .limit(1);
+  return recent ?? null;
 }
 
 /**
@@ -197,7 +218,8 @@ export async function applyExtraction(
   const { email, label, extraction: x } = input;
   const userId = email.userId;
   const now = input.now ?? new Date();
-  const reasons = reviewReasons(x);
+  const fresh = now.getTime() - email.receivedAt.getTime() <= FRESH_MS;
+  let reasons = worthReview(reviewReasons(x));
 
   return db.transaction(async (tx) => {
     let job: Job | null = null;
@@ -211,6 +233,7 @@ export async function applyExtraction(
       client: x.job?.client ?? null,
       startDate: x.job?.start_date ?? null,
       endDate: x.job?.end_date ?? null,
+      receivedOn: email.receivedAt.toISOString().slice(0, 10),
     };
     const existing = await findMatchingJob(tx, key);
 
@@ -218,13 +241,26 @@ export async function applyExtraction(
       const values = jobValues(x.job);
       if (existing) {
         changes = diffJob(existing, values);
+        // Judge the job as it stands after the merge: a rate this email
+        // lacks but an earlier one supplied is not missing.
+        const merged = { ...existing, ...values };
+        reasons = worthReview(
+          reviewReasons(x, undefined, {
+            client: merged.client,
+            start_date: merged.startDate,
+            call_time: merged.callTime,
+            location: merged.location,
+            day_rate: merged.dayRate === null ? null : Number(merged.dayRate),
+            timezone: merged.timezone,
+          }),
+        );
         const [updated] = await tx
           .update(jobs)
           .set({
             ...values,
             threadId: existing.threadId ?? email.threadId,
-            needsReview: existing.needsReview || reasons.length > 0,
-            reviewReason: reasons.length ? reasons.join("; ") : existing.reviewReason,
+            needsReview: reasons.length > 0,
+            reviewReason: reasons.length ? reasons.join("; ") : null,
             updatedAt: now,
           })
           .where(eq(jobs.id, existing.id))
@@ -354,11 +390,12 @@ export async function applyExtraction(
       }
     }
 
-    // Pushes: immediate for new / changed, scheduled for the rest.
+    // Pushes: immediate for new / changed (only when the email is news),
+    // scheduled for the rest.
     if (job) {
-      if (created) {
+      if (created && fresh) {
         await tx.insert(reminders).values(newBookingReminder(job, now));
-      } else if (changes.length) {
+      } else if (changes.length && fresh) {
         await tx.insert(reminders).values(jobChangedReminder(job, changes, now));
       }
       const travelLines = (

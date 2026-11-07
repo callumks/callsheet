@@ -85,7 +85,8 @@ export async function jobsForReview(userId: string) {
     .select()
     .from(jobs)
     .where(and(eq(jobs.userId, userId), eq(jobs.needsReview, true)))
-    .orderBy(desc(jobs.updatedAt));
+    // Newest work first, and a stable order: sorting by updated_at reshuffled the list after every sync.
+    .orderBy(desc(jobs.startDate), desc(jobs.createdAt));
 }
 
 /** The user's connected inbox, or null when Gmail isn't connected. */
@@ -154,11 +155,13 @@ export async function earnings(userId: string, day = today(), now = new Date()):
     )
     .orderBy(asc(jobs.startDate));
 
-  // Pick the currency with the most money in it; others are listed, not converted.
+  // Pick the currency with the most money in it; others are listed, not
+  // converted. An invoice whose email never named a currency is in that
+  // headline currency: the booker writes "5000", not "5000 USD", at home.
   const byCurrency = new Map<string, number>();
   for (const r of rows) {
-    const c = r.invoice.currency ?? r.job.currency ?? "GBP";
-    byCurrency.set(c, (byCurrency.get(c) ?? 0) + Number(r.invoice.amount ?? 0));
+    const c = r.invoice.currency ?? r.job.currency;
+    if (c) byCurrency.set(c, (byCurrency.get(c) ?? 0) + Number(r.invoice.amount ?? 0));
   }
   const currency = [...byCurrency.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? "GBP";
   const otherCurrencies = [...byCurrency.keys()].filter((c) => c !== currency);
@@ -171,7 +174,7 @@ export async function earnings(userId: string, day = today(), now = new Date()):
   const unpaid: EarningsView["unpaid"] = [];
 
   for (const r of rows) {
-    const c = r.invoice.currency ?? r.job.currency ?? "GBP";
+    const c = r.invoice.currency ?? r.job.currency ?? currency;
     if (c !== currency) continue;
     // Cancelled jobs count only if an invoice amount was set by hand (a kill fee).
     if (r.job.status === "cancelled" && r.invoice.status === "to_invoice") continue;

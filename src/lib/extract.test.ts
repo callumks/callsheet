@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { type Extraction, normalise, reviewReasons, validDate, validInstant, validTime, validZone } from "./extract";
+import { type Extraction, normalise, reviewReasons, validDate, validInstant, validTime, validZone, worthReview } from "./extract";
 
 const base: Extraction = {
   job: {
@@ -77,5 +77,29 @@ describe("reviewReasons", () => {
   it("lists missing required fields and low confidence", () => {
     const r = reviewReasons(normalise({ ...base, travel: [], confidence: 0.4, job: { ...base.job!, day_rate: null, location: null } }));
     expect(r).toEqual(["low confidence (0.40)", "location missing", "day_rate missing"]);
+  });
+  it("judges the merged job when one is given, and drops the model's job. prefix", () => {
+    const x = normalise({ ...base, travel: [], uncertain_fields: ["job.status", "day_rate"], job: { ...base.job!, day_rate: null } });
+    expect(reviewReasons(x)).toEqual(["day_rate missing", "status uncertain", "day_rate uncertain"]);
+    expect(reviewReasons(x, 0.7, { ...x.job!, day_rate: 900 })).toEqual(["status uncertain", "day_rate uncertain"]);
+  });
+});
+
+describe("worthReview", () => {
+  it("keeps doubts about who, when and how much; drops the rest", () => {
+    expect(
+      worthReview([
+        "low confidence (0.40)",
+        "call_time missing",
+        "location missing",
+        "timezone missing",
+        "day_rate missing",
+        "status uncertain",
+        "job_type uncertain",
+        "start_date uncertain",
+        "currency uncertain",
+        "travel[0].depart_at uncertain",
+      ]),
+    ).toEqual(["low confidence (0.40)", "day_rate missing", "start_date uncertain", "currency uncertain"]);
   });
 });

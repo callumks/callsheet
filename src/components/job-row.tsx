@@ -5,13 +5,16 @@ import type { Job } from "@/db/schema";
 import { eachDay, formatTime, jobName } from "@/lib/format";
 import { StatusDot } from "./status-dot";
 
+// Lists span months, so the month is always shown; the year only once it differs from today's.
 function DateBlock({ iso, hidden }: { iso: string | null; hidden?: boolean }) {
-  if (!iso) return <div className="w-11 shrink-0 text-center text-xs text-ink-3">TBC</div>;
+  if (!iso) return <div className="w-12 shrink-0 text-center text-xs text-ink-3">TBC</div>;
   const d = parseISO(iso);
+  const thisYear = d.getFullYear() === new Date().getFullYear();
   return (
-    <div className={`w-11 shrink-0 text-center ${hidden ? "invisible" : ""}`} aria-hidden={hidden}>
+    <div className={`w-12 shrink-0 text-center ${hidden ? "invisible" : ""}`} aria-hidden={hidden}>
       <div className="text-[0.68rem] font-semibold uppercase tracking-wider text-ink-3">{format(d, "EEE")}</div>
       <div className="text-[1.35rem] font-semibold leading-tight tracking-tight">{format(d, "d")}</div>
+      <div className="text-[0.68rem] font-semibold uppercase tracking-wider text-ink-3">{format(d, thisYear ? "MMM" : "MMM yy")}</div>
     </div>
   );
 }
