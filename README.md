@@ -33,3 +33,27 @@ Every 15 minutes a cron pulls new mail from Gmail with read-only access. Anythin
 Next.js 16, TypeScript, Tailwind, Postgres with Drizzle, Claude Haiku and Opus, web push. Hosted on Railway.
 
 Setup and deployment are in [docs/SETUP.md](docs/SETUP.md). The original spec is in [docs/SPEC.md](docs/SPEC.md).
+
+## Recent changes
+
+**6 November 2026**
+
+- Corrected one client's day rate and currency by hand in my own ledger, and recomputed its invoices as rate × days.
+- Rate and currency doubts on those jobs are cleared from the review queue.
+
+**5 November 2026**
+
+- **Matcher.** A job now matches on client plus overlapping dates, with the agency only breaking ties. An email with no dates attaches to the same client's job that wrapped in the last 60 days.
+- **First sync runs oldest-first.** Call sheets now land on the booking that came before them instead of creating a second job.
+- **Review queue.** Only doubts about who, when and how much flag a job. Reasons are re-judged against the merged job on every email, so a rate that arrives later clears "day rate missing".
+- **No push for old news.** New-booking and job-changed pushes only fire for emails less than a day old, so a backfill stays quiet.
+- **Dates show the month.** Job rows show the month, and the year when it isn't this one.
+- **Currency.** Earnings rows and totals agree on what an invoice with no stated currency is in. The review list is ordered by job date and no longer reshuffles after a sync.
+- **Tidy script.** `pnpm tsx scripts/tidy.ts [--dry]` merges duplicate jobs, re-judges review flags, fills invoice amounts once a rate is known, and drops stale pushes.
+
+**3 November 2026**
+
+- **Backfill.** `pnpm tsx scripts/backfill.ts [days]` re-reads a whole inbox window, 365 days by default. It is safe to re-run.
+- **Gmail rate limits.** A 429 from Gmail now waits and retries instead of failing the sync.
+- **Filter.** Plural booking words such as "options" and "call sheets" now count.
+- **Numbers.** `pnpm tsx scripts/numbers.ts` prints what is owed by currency straight from the ledger.
